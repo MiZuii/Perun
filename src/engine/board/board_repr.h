@@ -51,6 +51,10 @@ public:
 
 class Board
 {
+private:
+    template<bool WhiteMove, bool ENPoss, bool Kcastle, bool Qcastle, bool kcastle, bool qcastle>
+    std::vector<U16> _getMoves();
+
 public:   
     U64 _piece_bitboards[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     U64 _occ_bitboards[3] = {0, 0, 0};
@@ -70,6 +74,8 @@ public:
 
     Board();    // FEN_t of starting position is used to init
     Board(FEN_t fen);
+    Board(const Board &board) = default;
+    Board(Board &&board) = default;
     ~Board() = default;
 
     /* move format description -> the int is divided into 3 parts flags/src_index/target_index 
@@ -77,9 +83,6 @@ public:
     should be an 16bit unsigned integer. We are left with 4 bits which means 16 custom flags:
     silent|capture|pawn_double_push|kingside_castle|queenside_castle|...
     */
-
-    template<bool WhiteMove, bool ENPoss, bool Kcastle, bool Qcastle, bool kcastle, bool qcastle>
-    std::vector<U16> _getMoves();
     std::vector<U16> getMoves(); // template wrapper
 
     _ForceInline U64 get_white_pawn_attack(int idx);
@@ -99,6 +102,8 @@ public:
     static char intToField(U8 square);
     static char intToRank(U8 square);
     static std::string moveToString(U16 move);
+
+    static bool validFEN(FEN_t fen);
 
     std::string toString() const;
     std::wstring toWString() const;

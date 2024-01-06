@@ -68,6 +68,7 @@ Board::Board(FEN_t fen)
 
     for (std::string token : tokens)
     {
+
         switch (tokeni)
         {
         case 0:
@@ -610,4 +611,9 @@ std::string Board::moveToString(U16 move)
     ret += Board::intToField(move & 0b111111);
     ret += Board::intToRank(move & 0b111111);
     return ret;
+}
+
+bool Board::validFEN(FEN_t fen)
+{
+    return std::regex_match(fen, std::regex("([PRNBKQprnbkq12345678]/){7}[PRNBKQprnbkq12345678]( )(w|b)( )(-|(K?Q?k?q?))"));
 }
