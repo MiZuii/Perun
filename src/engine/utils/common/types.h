@@ -1,31 +1,60 @@
 #pragma once
 
 #include <inttypes.h>
+#include <string.h>
 
 typedef uint64_t U64;
+typedef uint16_t U16;
 typedef uint8_t U8;
-typedef uint8_t Piece_t;
+typedef std::string FEN_t;
+
+#define _ForceInline __always_inline
+#define _Inline inline
 
 /* --------------------------- PIECE TYPES DEFINES -------------------------- */
 
-#define PAWN_W      0b10000000
-#define KNIGHT_W    0b01000000
-#define BISHOP_W    0b11000000
-#define ROOK_W      0b00100000
-#define QUEEN_W     0b10100000
-#define KING_W      0b01100000
+// DONT CHANGE ENUMERATION ORDER!!!
+enum Piece {
+    K,
+    Q,
+    B,
+    N,
+    R,
+    P,
+    k,
+    q,
+    b,
+    n,
+    r,
+    p,
+    no_piece
+};
 
-#define PAWN_B      0b00000001
-#define KNIGHT_B    0b00000010
-#define BISHOP_B    0b00000011
-#define ROOK_B      0b00000100
-#define QUEEN_B     0b00000101
-#define KING_B      0b00000110
-
-#define IS_WHITE(piece) piece > 0b00010000
-#define IS_BLACK(piece) piece < 0b00001000
+enum Side {
+    white,
+    black,
+    both
+};
 
 /* ----------------------------- SQUARE DEFINES ----------------------------- */
+
+#define _A 7
+#define _B 6
+#define _C 5
+#define _D 4
+#define _E 3
+#define _F 2
+#define _G 1
+#define _H 0
+
+#define _1 0
+#define _2 1
+#define _3 2
+#define _4 3
+#define _5 4
+#define _6 5
+#define _7 6
+#define _8 7
 
 #define A1 7
 #define B1 6
@@ -98,3 +127,5 @@ typedef uint8_t Piece_t;
 #define F8 58
 #define G8 57
 #define H8 56
+
+#define NO_SQ 64

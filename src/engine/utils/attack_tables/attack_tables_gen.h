@@ -1,8 +1,8 @@
 #pragma once
 
-#include "common/types.h"
+#include "../common/types.h"
 
-#if 1
+#if DEBUG
 
 #define SIZE 64
 #define BISHOP_ATTACK_SIZE 512
@@ -15,6 +15,9 @@ void generate_king_attack(U64 (&arr)[SIZE]);
 
 void generate_bishop_attack(U64 (&attack)[SIZE][BISHOP_ATTACK_SIZE], U8 (&relevant_bits)[SIZE], U64 (&mask)[SIZE], U64 (&magic)[SIZE]);
 void generate_rook_attack(U64 (&attack)[SIZE][ROOK_ATTACK_SIZE], U8 (&relevant_bits)[SIZE], U64 (&mask)[SIZE], U64 (&magic)[SIZE]);
+
+void generate_rook_checkmask(U64 (&attack)[SIZE][SIZE]);
+void generate_bishop_checkmask(U64 (&attack)[SIZE][SIZE]);
 
 U64 make_bishop_mask(int sq);
 U64 make_rook_mask(int sq);

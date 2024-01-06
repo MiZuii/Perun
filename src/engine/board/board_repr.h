@@ -2,84 +2,105 @@
 
 #include "../utils/common/includes.h"
 #include "../utils/common/types.h"
+#include "../utils/common/bit_opers.h"
 
-// const int tab64[64] = {
-//     63,  0, 58,  1, 59, 47, 53,  2,
-//     60, 39, 48, 27, 54, 33, 42,  3,
-//     61, 51, 37, 40, 49, 18, 28, 20,
-//     55, 30, 34, 11, 43, 14, 22,  4,
-//     62, 57, 46, 52, 38, 26, 32, 41,
-//     50, 36, 17, 19, 29, 10, 13, 21,
-//     56, 45, 25, 31, 35, 16,  9, 12,
-//     44, 24, 15,  8, 23,  7,  6,  5};
-
-// int log2_64 (uint64_t value)
-// {
-//     value |= value >> 1;
-//     value |= value >> 2;
-//     value |= value >> 4;
-//     value |= value >> 8;
-//     value |= value >> 16;
-//     value |= value >> 32;
-//     return tab64[((uint64_t)((value - (value >> 1))*0x07EDD5E59A4E28C2)) >> 58];
-// }
+#define STARTING_POS "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 /* -------------------------------------------------------------------------- */
 /*                                  BITBOARDS                                 */
 /* -------------------------------------------------------------------------- */
 
-class BitBoardBase
+/* class providing a wraper with usefull debug functions 
+for bitboard, the bitboards themselves are just U64 numbers.
+The bitboard class would be not efficient. For simplifying
+the debuging a bit board wraper class provides methodes
+applied to bitboards*/
+#if DEBUG
+
+class BitBoardWrap
 {
 public:
+
     U64 _bit_board;
-    virtual ~BitBoardBase() = 0;
 
-#if DEBUG
-    virtual std::string toString() const;
-#endif
+    BitBoardWrap();
+    BitBoardWrap(U64 board);
+    ~BitBoardWrap() = default;
 
-};
-
-
-class PieceBitBoard : private BitBoardBase
-{
-private:
-    Piece_t _piece;
-
-public:
-    PieceBitBoard(U64 board, Piece_t piece);
-    ~PieceBitBoard() = default;
-
-#if DEBUG
+    static std::string bitboard_repr(U64 bb);
     std::string toString() const;
-    friend std::ostream& operator<<(std::ostream& os, const PieceBitBoard& obj);
-#endif
+    friend std::ostream& operator<<(std::ostream& os, const BitBoardWrap& obj);
 };
 
-
-class PureBitBoard : private BitBoardBase
-{
-public:
-    PureBitBoard(U64 board);
-    ~PureBitBoard() = default;
-
-#if DEBUG
-    std::string toString() const;
-    friend std::ostream& operator<<(std::ostream& os, const PureBitBoard& obj);
 #endif
-};
-
 
 /* -------------------------------------------------------------------------- */
 /*                                    BOARD                                   */
 /* -------------------------------------------------------------------------- */
 
+class BoardState
+{
+public:
+    const bool white_turn;
+    const bool en_passant_avilable;
+    const bool white_king_castle_poss;
+    const bool white_queen_castle_poss;
+    const bool black_king_castle_poss;
+    const bool black_queen_castl_poss;
+};
 
 class Board
 {
-private:
-    /* data */
-public:
-    Board(/* args */);
-    ~Board();
+public:   
+    U64 _piece_bitboards[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    U64 _occ_bitboards[3] = {0, 0, 0};
+
+    /*Castle rights explanation
+    1000 - white King side castle
+    0100 - white Queen side castle
+    0010 - black King side castle
+    0001 - black Queen side castle
+    */
+
+    Side _side_to_move=Side::white;
+    U8 _castle_rights=0, _en_passant=NO_SQ;
+    int _halfmove_clock=0, _fullmove_clock=0;
+
+    // methods
+
+    Board();    // FEN_t of starting position is used to init
+    Board(FEN_t fen);
+    ~Board() = default;
+
+    /* move format description -> the int is divided into 3 parts flags/src_index/target_index 
+    both indexes describe int in range <0, 64> soo they need 6 bits. Because of that the int
+    should be an 16bit unsigned integer. We are left with 4 bits which means 16 custom flags:
+    silent|capture|pawn_double_push|kingside_castle|queenside_castle|...
+    */
+
+    template<bool WhiteMove, bool ENPoss, bool Kcastle, bool Qcastle, bool kcastle, bool qcastle>
+    std::vector<U16> _getMoves();
+    std::vector<U16> getMoves(); // template wrapper
+
+    _ForceInline U64 get_white_pawn_attack(int idx);
+    _ForceInline U64 get_black_pawn_attack(int idx);
+    _ForceInline U64 get_knight_attack(int idx);
+    _ForceInline U64 get_king_attack(int idx);
+    _ForceInline U64 get_bishop_attack(int idx);
+    _ForceInline U64 get_rook_attack(int idx);
+    _ForceInline U64 get_queen_attack(int idx);
+    _ForceInline U64 get_bishop_checkmask(int idx, int king_idx);
+    _ForceInline U64 get_rook_checkmask(int idx, int king_idx);
+
+    static Piece charToPiece(char pieceChar);
+    static char PieceToChar(Piece piece);
+    static wchar_t PieceToWChar(Piece piece);
+    static U8 squareToInt(char field, char rank);
+    static char intToField(U8 square);
+    static char intToRank(U8 square);
+    static std::string moveToString(U16 move);
+
+    std::string toString() const;
+    std::wstring toWString() const;
+    FEN_t getFEN();
 };
