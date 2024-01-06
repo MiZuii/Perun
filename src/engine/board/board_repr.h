@@ -38,17 +38,6 @@ public:
 /*                                    BOARD                                   */
 /* -------------------------------------------------------------------------- */
 
-class BoardState
-{
-public:
-    const bool white_turn;
-    const bool en_passant_avilable;
-    const bool white_king_castle_poss;
-    const bool white_queen_castle_poss;
-    const bool black_king_castle_poss;
-    const bool black_queen_castl_poss;
-};
-
 class Board
 {
 private:

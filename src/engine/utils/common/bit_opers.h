@@ -38,6 +38,8 @@
 
 #define LS1B(x) (x) & -(x)
 
+constexpr uint64_t cols_get[8] = {H_COL, G_COL, F_COL, E_COL, D_COL, C_COL, B_COL, A_COL};
+
 constexpr int tab64[64] = {
     63,  0, 58,  1, 59, 47, 53,  2,
     60, 39, 48, 27, 54, 33, 42,  3,

@@ -55,6 +55,14 @@ Board::Board() : Board(STARTING_POS) {}
 
 Board::Board(FEN_t fen)
 {
+
+    // fen validation
+    if(!validFEN(fen))
+    {
+        std::cerr << "Invalid fen in Board constructor. Starting position used instead" << std::endl;
+        fen = STARTING_POS;
+    }    
+
     std::istringstream iss(fen);
     std::istringstream *sub_iss;
     std::vector<std::string> tokens, row_tokens;
@@ -613,7 +621,9 @@ std::string Board::moveToString(U16 move)
     return ret;
 }
 
+#define FEN_REGEX "^(([PRNBKQprnbkq1-8]){1,8}\\/){7}(([PRNBKQprnbkq1-8]){1,8}) (w|b) (-|(K?Q?k?)q|(K?Q?kq?)|(K?Qk?q?)|(KQ?k?q?)) (-|[a-h][1-8]) (0|[1-9][0-9]*) (0|[1-9][0-9]*)$"
+
 bool Board::validFEN(FEN_t fen)
 {
-    return std::regex_match(fen, std::regex("([PRNBKQprnbkq12345678]/){7}[PRNBKQprnbkq12345678]( )(w|b)( )(-|(K?Q?k?q?))"));
+    return std::regex_match(fen, std::basic_regex(FEN_REGEX));
 }

@@ -128,7 +128,7 @@ std::vector<U16> Board::_getMoves()
     /* _bitboard and bitboard to are operational bitboards */
     int idx, idx2, check_count=0;
     int king_idx = bit_index(_piece_bitboards[playerPiece<WhiteMove>(K)]);
-    U64 _bitboard, _bitboard2, _bitboard3, _enemy_attack_bb=0, rook_pins=0, bishop_pins=0, checkmask=0, movemask;
+    U64 _bitboard, _bitboard2, _bitboard3, _bitboard4, _enemy_attack_bb=0, rook_pins=0, bishop_pins=0, checkmask=0, movemask;
     U64 attacks[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     std::vector<U16> moves;
 
@@ -502,14 +502,118 @@ std::vector<U16> Board::_getMoves()
         /* -------------------------------- PAWNMOVES ------------------------------- */
 
         _bitboard = _piece_bitboards[playerPiece<WhiteMove>(P)];
+        _bitboard2 = _bitboard & rook_pins; // pawns pined only by
+        _bitboard3 = _bitboard & bishop_pins; // pawns pinned by bishops
+        _bitboard4 = _bitboard & ~(rook_pins | bishop_pins); //not pinned pawns;
 
-        return moves;
+        // this can be optimized (maybe consider puting this inside the while??? how often two> pawns are pinned by the rooks anyway?)
+        // provide all pawn moves and store in _bitboard(rookpinned moves)
+        if constexpr (WhiteMove)
+        {
+            // simple one step forward
+            _bitboard = ((_bitboard2 & ~(_occ_bitboards[enemySide<WhiteMove>()] >> 8)) << 8) & movemask & rook_pins;
+            // add seccond step forward for pawns that meet the criteria
+            _bitboard |= ((_bitboard & ROW_3 & ~(_occ_bitboards[enemySide<WhiteMove>()] >> 8)) << 8) & movemask; // is & rook_pins needed here?
+        }
+        else
+        {
+            // simple one step forward
+            _bitboard = ((_bitboard2 & ~(_occ_bitboards[enemySide<WhiteMove>()] << 8)) >> 8) & movemask & rook_pins;
+            // add seccond step forward for pawns that meet the criteria
+            _bitboard |= ((_bitboard & ROW_6 & ~(_occ_bitboards[enemySide<WhiteMove>()] << 8)) >> 8) & movemask; // is & rook_pins needed here?
+        }
+
+        while(_bitboard2)
+        {
+            idx = bitScanForward(_bitboard2);
+            CLEAR_BIT(_bitboard2, idx);
+
+            while(_bitboard & cols_get[idx % 8])
+            {
+                idx2 = bitScanForward(_bitboard & cols_get[idx % 8]);
+                CLEAR_BIT(_bitboard, idx2);
+                moves.push_back(MAKE_MOVE(0, idx, idx2));
+            }
+        }
+
+        // this can be optimized
+        // provide all pawn attacks, store in _bitboard/_bitboard2
+
+        while(_bitboard3)
+        {
+            idx = bitScanForward(_bitboard3);
+            CLEAR_BIT(_bitboard3, idx);
+
+            if constexpr (WhiteMove)
+            {
+                _bitboard = get_white_pawn_attack(idx) & _occ_bitboards[enemySide<WhiteMove>()] & bishop_pins & checkmask;
+            }
+            else
+            {
+                _bitboard = get_black_pawn_attack(idx) & _occ_bitboards[enemySide<WhiteMove>()] & bishop_pins & checkmask;
+            }
+
+            while(_bitboard)
+            {
+                idx2 = bitScanForward(_bitboard);
+                CLEAR_BIT(_bitboard, idx2);
+                moves.push_back(MAKE_MOVE(0, idx, idx2));
+            }
+        }
+
+        // standard no pinned pawns pushes
+        if constexpr (WhiteMove)
+        {
+            // simple one step forward
+            _bitboard = ((_bitboard4 & ~(_occ_bitboards[enemySide<WhiteMove>()] >> 8)) << 8) & movemask;
+            // add seccond step forward for pawns that meet the criteria
+            _bitboard |= ((_bitboard & ROW_3 & ~(_occ_bitboards[enemySide<WhiteMove>()] >> 8)) << 8) & movemask; // is & rook_pins needed here?
+        }
+        else
+        {
+            // simple one step forward
+            _bitboard = ((_bitboard4 & ~(_occ_bitboards[enemySide<WhiteMove>()] << 8)) >> 8) & movemask;
+            // add seccond step forward for pawns that meet the criteria
+            _bitboard |= ((_bitboard & ROW_6 & ~(_occ_bitboards[enemySide<WhiteMove>()] << 8)) >> 8) & movemask; // is & rook_pins needed here?
+        }
+
+        while(_bitboard4)
+        {
+            idx = bitScanForward(_bitboard4);
+            CLEAR_BIT(_bitboard4, idx);
+
+            if constexpr (WhiteMove)
+            {
+                _bitboard2 = get_white_pawn_attack(idx) & _occ_bitboards[enemySide<WhiteMove>()] & checkmask;
+            }
+            else
+            {
+                _bitboard2 = get_black_pawn_attack(idx) & _occ_bitboards[enemySide<WhiteMove>()] & checkmask;
+            }
+
+            while(_bitboard & cols_get[idx % 8])
+            {
+                idx2 = bitScanForward(_bitboard & cols_get[idx % 8]);
+                CLEAR_BIT(_bitboard, idx2);
+                moves.push_back(MAKE_MOVE(0, idx, idx2));
+            }
+
+            while(_bitboard2)
+            {
+                idx2 = bitScanForward(_bitboard2);
+                CLEAR_BIT(_bitboard2, idx2);
+                moves.push_back(MAKE_MOVE(0, idx, idx2));
+            }
+        }
+
+        /* ------------------------------- KING MOVES ------------------------------- */
     }
     else
     {
         // only king moves
     }
     
+    return moves;
 }
 
 

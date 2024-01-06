@@ -17,11 +17,11 @@ int main(void) {
     // std::wcin.imbue(std::locale());
     // std::wcout.imbue(std::locale());
 
-    // Board test1("8/2r3b1/8/q7/1NPP4/1BKN3r/4R3/8 w KQkq - 0 1");
-    Board test1("8/2r3b1/3K4/8/8/5Q2/8/8 w KQkq - 0 1");
     // std::cout << b.toString();
     // std::wcout << b.toWString();
-    // std::cout << b.getFEN();
+
+    // Board test1("8/2r3b1/8/q7/1NPP4/1BKN3r/4R3/8 w KQkq - 0 1");
+    Board test1("8/5b2/1b6/1P1P4/2K5/8/8/8 w -- - 0 1");
 
     moves = test1.getMoves();
     std::cout << "test1 moves:" << std::endl;
