@@ -21,6 +21,7 @@ int main(void) {
     // std::wcout << b.toWString();
 
     // Board test1("8/2r3b1/8/q7/1NPP4/1BKN3r/4R3/8 w KQkq - 0 1");
+    // test commit
     Board test1("k3r3/8/8/8/2nQ4/4K3/8/8 w - - 0 1");
 
     moves = test1.getMoves();
