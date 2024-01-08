@@ -823,4 +823,99 @@ void generate_bishop_checkmask(U64 (&attack)[SIZE][SIZE])
     // checkmask_print(attack, "bishop_checkmask");
 }
 
+void calc_sadsquare(int king_idx, int piece_idx, int &ss_file, int &ss_rank)
+{
+    if(piece_idx == 64 || king_idx == piece_idx)
+    {
+        ss_rank = 7;
+        ss_file = 8;
+        // idx = 64
+        return;
+    }
+    int king_rank = king_idx/8, king_file = (king_idx % 8), piece_rank = piece_idx/8, piece_file = (piece_idx % 8);
+    if(king_rank == piece_rank && piece_file > king_file)
+    {
+        ss_rank = king_rank;
+        ss_file = piece_file - 2;
+    }
+    else if(king_rank == piece_rank && king_file > piece_file)
+    {
+        ss_rank = king_rank;
+        ss_file = piece_file + 2;
+    }
+    else if(king_file == piece_file && king_rank > piece_rank)
+    {
+        ss_rank = piece_rank + 2;
+        ss_file = king_file;
+    }
+    else if(king_file == piece_file && piece_rank > king_rank)
+    {
+        ss_rank = piece_rank - 2;
+        ss_file = king_file;
+    }
+    else if(king_rank == piece_rank + 1 && king_file == piece_file + 1)
+    {
+        ss_rank = king_rank + 1;
+        ss_file = king_file + 1;
+    }
+    else if(king_rank == piece_rank - 1 && king_file == piece_file + 1)
+    {
+        ss_rank = king_rank - 1;
+        ss_file = king_file + 1;
+    }
+    else if(king_rank == piece_rank + 1 && king_file == piece_file - 1)
+    {
+        ss_rank = king_rank + 1;
+        ss_file = king_file - 1;
+    }
+    else if(king_rank == piece_rank - 1 && king_file == piece_file - 1)
+    {
+        ss_rank = king_rank - 1;
+        ss_file = king_file - 1;
+    }
+    else
+    {
+        ss_rank = 7;
+        ss_file = 8;
+        // idx = 64
+    }
+}
+
+void sadsquares_print(U64 (&attack)[SIZE][SIZE+1])
+{
+    printf("constexpr U64 sadsquare[%d][%d] = {\n", SIZE, SIZE+1);
+
+    // loop over 64 board squares
+    for (int square = 0; square < SIZE; square++)
+    {
+        for (int attack_index = 0; attack_index < SIZE+1; attack_index++)
+        {
+            fprintf(stdout, "0x%lxUL,", attack[square][attack_index]);
+        }
+        fprintf(stdout, "\n");
+    }
+    fprintf(stdout, "};\n\n");
+}
+
+void generate_sadsquares(U64 (&arr)[SIZE][SIZE + 1])
+{
+    int ss_file, ss_rank;
+
+    for(int king_idx=0; king_idx<SIZE; king_idx++)
+    {
+        for(int piece_idx=0; piece_idx<SIZE+1; piece_idx++)
+        {
+            arr[king_idx][piece_idx] = 0;
+
+            calc_sadsquare(king_idx, piece_idx, ss_file, ss_rank);
+            if(ss_file >= 0 && ss_file < 8 && ss_rank >= 0 && ss_rank < 8)
+            {
+                arr[king_idx][piece_idx] = 1UL << (ss_rank*8 + ss_file);
+            }
+        }
+    }
+
+    // sadsquares_print(arr);
+}
+
 #endif

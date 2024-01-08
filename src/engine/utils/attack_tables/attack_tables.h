@@ -7,6 +7,9 @@
 #include "attack_tables_data_bishop.h"
 #include "attack_tables_data_rook.h"
 
+// tmp
+#include "../../board/board_repr.h"
+
 #define SIZE 64
 #define BISHOP_ATTACK_SIZE 512
 #define ROOK_ATTACK_SIZE 4096
@@ -24,4 +27,9 @@ U64 _ForceInline _get_rook_attack(U64 occ, int sq) {
    occ *= rook_magic[sq];
    occ >>= 64-rook_relevant_bits[sq];
    return rook_attack[sq][occ];
+}
+
+U64 _ForceInline _get_sadsquare(int kingsq, U64 checkmask)
+{
+    return sadsquare[kingsq][bit_index(checkmask & king_attack[kingsq])];
 }

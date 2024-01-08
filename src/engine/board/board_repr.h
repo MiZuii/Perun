@@ -69,8 +69,13 @@ public:
 
     /* move format description -> the int is divided into 3 parts flags/src_index/target_index 
     both indexes describe int in range <0, 64> soo they need 6 bits. Because of that the int
-    should be an 16bit unsigned integer. We are left with 4 bits which means 16 custom flags:
-    silent|capture|pawn_double_push|kingside_castle|queenside_castle|...
+    should be an 16bit unsigned integer. We are left with 4 bits.
+    first 2 bits we reserve for loosing castle rights.
+    0b0001... - bit responsible for queeside castle rights loos (if lost than 1)
+    0b0010... - bit responsible for kingside castle rights loos (if lost than 1)
+    This needs to be done because we can loose both rights with one move.
+    This leaves us with 4 custom flags
+    silent|capture|pawn_double_push|(space for one flag)
     */
     std::vector<U16> getMoves(); // template wrapper
 

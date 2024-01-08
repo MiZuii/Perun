@@ -19,6 +19,8 @@ void generate_rook_attack(U64 (&attack)[SIZE][ROOK_ATTACK_SIZE], U8 (&relevant_b
 void generate_rook_checkmask(U64 (&attack)[SIZE][SIZE]);
 void generate_bishop_checkmask(U64 (&attack)[SIZE][SIZE]);
 
+void generate_sadsquares(U64 (&arr)[SIZE][SIZE+1]);
+
 U64 make_bishop_mask(int sq);
 U64 make_rook_mask(int sq);
 U8 count_bits(U64 pos);

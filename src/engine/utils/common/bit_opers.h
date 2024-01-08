@@ -80,6 +80,8 @@ _ForceInline uint64_t leadingZeros(uint64_t x) {
 // function to be used in code
 _ForceInline int bit_index(uint64_t x)
 {
+    // the bit index should return 64 if x == 0
+    // the king sadsquares lookup relies on that fact
     return leadingZeros(x);
 }
 

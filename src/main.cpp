@@ -5,7 +5,7 @@
 #include "engine/utils/attack_tables/attack_tables.h"
 #include "engine/utils/attack_tables/attack_tables_gen.h"
 #include "engine/board/board_repr.h"
-
+#define MAKE_MOVE(flag, src_idx, target_idx) ((flag) | ((src_idx) << 6) | (target_idx))
 int main(void) {
 #if DEBUG
 
@@ -21,7 +21,7 @@ int main(void) {
     // std::wcout << b.toWString();
 
     // Board test1("8/2r3b1/8/q7/1NPP4/1BKN3r/4R3/8 w KQkq - 0 1");
-    Board test1("8/5b2/1b6/1P1P4/2K5/8/8/8 w -- - 0 1");
+    Board test1("k3r3/8/8/8/2nQ4/4K3/8/8 w - - 0 1");
 
     moves = test1.getMoves();
     std::cout << "test1 moves:" << std::endl;

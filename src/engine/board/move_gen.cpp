@@ -104,6 +104,60 @@ constexpr Side enemySide()
     }
 }
 
+template<bool WhiteMove>
+constexpr U64 kingsideCastleMask()
+{
+    if constexpr (WhiteMove)
+    {
+        //return 0xEUL;
+        return (1UL << E1) | (1UL << F1) | (1UL << G1);
+    }
+    else
+    {
+        //return 0xE0000000000000000UL;
+        return (1UL << E8) | (1UL << F8) | (1UL << G8);
+    }
+}
+
+template<bool WhiteMove>
+constexpr U64 queensideCastleMask()
+{
+    if constexpr (WhiteMove)
+    {
+        return (1UL << E1) | (1UL << D1) | (1UL << C1) | (1UL << B1);
+    }
+    else
+    {
+        return (1UL << E8) | (1UL << D8) | (1UL << C8) | (1UL << B8);
+    }
+}
+
+template<bool WhiteMove>
+constexpr int kingsideCastleTarget()
+{
+    if constexpr (WhiteMove)
+    {
+        return G1;
+    }
+    else
+    {
+        return G8;
+    }
+}
+
+template<bool WhiteMove>
+constexpr int queensideCastleTarget()
+{
+    if constexpr (WhiteMove)
+    {
+        return C1;
+    }
+    else
+    {
+        return C8;
+    }
+}
+
 /* -------------------------------------------------------------------------- */
 /*                               MOVE GENERATION                              */
 /* -------------------------------------------------------------------------- */
@@ -125,53 +179,22 @@ std::vector<U16> Board::_getMoves()
 
     */
 
-    /* _bitboard and bitboard to are operational bitboards */
-    int idx, idx2, check_count=0;
-    int king_idx = bit_index(_piece_bitboards[playerPiece<WhiteMove>(K)]);
-    U64 _bitboard, _bitboard2, _bitboard3, _bitboard4, _enemy_attack_bb=0, rook_pins=0, bishop_pins=0, checkmask=0, movemask;
-    U64 attacks[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    /* _bitboard(|2|3|4) are operational bitboards (like registers) */
+    int idx, idx2, check_count=0, king_idx = bit_index(_piece_bitboards[playerPiece<WhiteMove>(K)]);
+    U64 _bitboard, _bitboard2, _bitboard3, _bitboard4, _enemy_attack_bb=0, rook_pins=0, bishop_pins=0, checkmask=0, sadsauqre_bb=0, movemask;
     std::vector<U16> moves;
 
-    /*
-    
-    Idea:
+    /* -------------------------- ENEMY ATTACK MAP FILL ------------------------- */
 
-     + Generate pieces attacks for all the pieces
-     + Generate not side to move attack map
-     
-     + Generate pawn pushes
-     + Generate Castles (based on not side to move attack map)
-     + Generate en passant
-
-     + Generate pin mask
-     + Generate check mask
-
-     + filter all the moves generated till now with pin masks and check masks
-        (normal attack map moves, pawn pushes, en passant (everything))
-
-     + Iterate moves and return with flags(like [quiet move, capture, double pawn push, castle, kingmove, rookmove]).
-
-     !! Two bit scans? one at the start to generate pseudo legal moves and after filtering the seccon at the end to
-        get proper move format an filter which piece accualy done the move?
-
-    */
-
-    // enemy attack map fillup
-
-
-    /*
-    IDEA:
-    Embed the pinmask and checkmas creation into the attacks lookup for all black pieces to save bitscans cycles.
-    The pieces need to be evaluated one by one anyway soo this souds pretty comfy.
-    */
+    // line to include queens into bishop and rook evaluations
+    _bitboard3 = _piece_bitboards[enemyPiece<WhiteMove>(Q)];
 
     // enemy bishop attack processing
-    _bitboard = _piece_bitboards[enemyPiece<WhiteMove>(B)];
+    _bitboard = _piece_bitboards[enemyPiece<WhiteMove>(B)] | _bitboard3;
     while(_bitboard)
     {
         idx = bitScanForward(_bitboard);
-        attacks[enemyPiece<WhiteMove>(B)] |= get_bishop_attack(idx);
-        _enemy_attack_bb |= attacks[enemyPiece<WhiteMove>(B)];
+        _enemy_attack_bb |= get_bishop_attack(idx);
         CLEAR_BIT(_bitboard, idx);
         // -- pinmask and checkmask part
         _bitboard2 = get_bishop_checkmask(idx, king_idx);
@@ -200,12 +223,11 @@ std::vector<U16> Board::_getMoves()
     }
 
     //enemy rook attack processing
-    _bitboard = _piece_bitboards[enemyPiece<WhiteMove>(R)];
+    _bitboard = _piece_bitboards[enemyPiece<WhiteMove>(R)] | _bitboard3;
     while(_bitboard)
     {
         idx = bitScanForward(_bitboard);
-        attacks[enemyPiece<WhiteMove>(R)] |= get_rook_attack(idx);
-        _enemy_attack_bb |= attacks[enemyPiece<WhiteMove>(R)];
+        _enemy_attack_bb |= get_rook_attack(idx);
         CLEAR_BIT(_bitboard, idx);
         // -- pinmask and checkmask part
         _bitboard2 = get_rook_checkmask(idx, king_idx);
@@ -238,76 +260,14 @@ std::vector<U16> Board::_getMoves()
     while(_bitboard)
     {
         idx = bitScanForward(_bitboard);
-        attacks[enemyPiece<WhiteMove>(N)] |= get_knight_attack(idx);
-        _enemy_attack_bb |= attacks[enemyPiece<WhiteMove>(N)];
+        _bitboard3 = get_knight_attack(idx);
+        _enemy_attack_bb |= _bitboard3;
         CLEAR_BIT(_bitboard, idx);
         // -- pinmask and checkmask part
-        _bitboard2 = get_rook_checkmask(idx, king_idx);
-        if(_piece_bitboards[playerPiece<WhiteMove>(K)] & attacks[enemyPiece<WhiteMove>(N)])
+        if(_piece_bitboards[playerPiece<WhiteMove>(K)] & _bitboard3)
         {
             SET_BIT(checkmask, idx);
             check_count++;
-        }
-        // -- end
-    }
-
-    // enemy queen attack processing
-    _bitboard = _piece_bitboards[enemyPiece<WhiteMove>(Q)];
-    while(_bitboard)
-    {
-        idx = bitScanForward(_bitboard);
-        attacks[enemyPiece<WhiteMove>(Q)] |= get_queen_attack(idx);
-        _enemy_attack_bb |= attacks[enemyPiece<WhiteMove>(B)];
-        CLEAR_BIT(_bitboard, idx);
-
-        // -- pinmask and checkmask part
-        // first bishoplike attacks
-        _bitboard2 = get_bishop_checkmask(idx, king_idx);
-        if(bit_count(_bitboard2 & _occ_bitboards[enemySide<WhiteMove>()]) == 1)
-        {
-            // needed condition for any pin or check to exist -> else there is none
-            switch (bit_count(_bitboard2 & _occ_bitboards[playerSide<WhiteMove>()]))
-            {
-            case 0:
-                /* this should be added to checkmask */
-                checkmask |= _bitboard2;
-                check_count++;
-                break;
-
-            case 1:
-                /* this should be added to pinmaks */
-                bishop_pins |= _bitboard2;
-                break;
-            
-            default:
-                /* more than 2 pieces in pin is not a pin */
-                break;
-            }
-        }
-        else // there is bishoplike move of queen it can no longer provide any rooklike move
-        {
-            _bitboard2 = get_rook_checkmask(idx, king_idx);
-            if(bit_count(_bitboard2 & _occ_bitboards[enemySide<WhiteMove>()]) == 1)
-            {
-                // needed condition for any pin or check to exist -> else there is none
-                switch (bit_count(_bitboard2 & _occ_bitboards[playerSide<WhiteMove>()]))
-                {
-                case 0:
-                    /* this should be added to checkmask */
-                    checkmask |= _bitboard2;
-                    check_count++;
-                    break;
-
-                case 1:
-                    /* this should be added to pinmaks */
-                    rook_pins |= _bitboard2;
-                    break;
-                
-                default:
-                    /* more than 2 pieces in pin is not a pin */
-                    break;
-                }
-            }
         }
         // -- end
     }
@@ -317,8 +277,7 @@ std::vector<U16> Board::_getMoves()
     while(_bitboard)
     {
         idx = bitScanForward(_bitboard);
-        attacks[enemyPiece<WhiteMove>(K)] |= get_king_attack(idx);
-        _enemy_attack_bb |= attacks[enemyPiece<WhiteMove>(K)];
+        _enemy_attack_bb |= get_king_attack(idx);
         CLEAR_BIT(_bitboard, idx);
     }
 
@@ -330,7 +289,6 @@ std::vector<U16> Board::_getMoves()
         {
             idx = bitScanForward(_bitboard);
             _bitboard2 = get_black_pawn_attack(idx);
-            attacks[enemyPiece<WhiteMove>(P)] |= _bitboard2;
             _enemy_attack_bb |= _bitboard2;
             CLEAR_BIT(_bitboard, idx);
 
@@ -341,7 +299,6 @@ std::vector<U16> Board::_getMoves()
         {
             idx = bitScanForward(_bitboard);
             _bitboard2 = get_white_pawn_attack(idx);
-            attacks[enemyPiece<WhiteMove>(P)] |= _bitboard2;
             _enemy_attack_bb |= _bitboard2;
             CLEAR_BIT(_bitboard, idx);
 
@@ -351,49 +308,15 @@ std::vector<U16> Board::_getMoves()
     }
 
     //Divide into position with one or less checks and positions with more checks
-    if(check_count <= 1)
+    switch (check_count)
     {
-        // create movemask
-        if(!checkmask)
-        {
-            checkmask = UINT64_MAX;
-        }
+    case 0:
+        sadsauqre_bb = ~_get_sadsquare(king_idx, checkmask);
+        checkmask = UINT64_MAX;
+        // break is ommited here not by accident
+
+    case 1:
         movemask = ~(_occ_bitboards[playerSide<WhiteMove>()]) & checkmask;
-
-        /*
-        IDEA:
-        Because we need to bitscan the white pieces anyway (to generate intiger like moves),
-        use it to simultaniously filter incoming moves and output them instatnly. Because of 
-        that approach the problem of deciding which piece is responsible for what move no longer
-        exists. Moreover, because we know the piece type being filtered, the problem of deciding
-        what pinmask to use also dissapears.
-        The only problem are pawns because shifting them one by one is not efficient.
-
-        SADSQUARES IDEA:
-        The idea:
-            "
-            Nor check mask or attack maps preven king from going backward
-            SOLUTION:
-            Create SADSQUARES lookup evaluated with pinmask and checkmask. If a slider piece attacks
-            one of the king. We also know which square near king got attacked so we create map of squares
-            that will be attacked if the king would move. For example rook attacks king from the right
-            .....    ......                                   ...
-            .K..R -> .K11R. Than the sad squares map would be 111 
-            .....    ......                                   ...
-            So this are the squares of original attack and attacks if king moves. Soo after the evaluation
-            we get a sadsquares map which we simply logicaly NAND with kingmoves.
-            "
-        
-        in case 0 there are no direct checks soo this doesn't need to be calculated
-        in case 1 and default this applies. Because of how the checkmask is derived from pinmask we can 
-        easily figure out where is the backsquare that king cannot move to.
-            Explanation. We need to take only slider pieces into consideration because if a knight, or pawn
-            attacks the king there is no trace to follow.
-        The only problem with this approach is when a slider piece stands exactly next to the king. The sad
-        squares will work correctly and prevent the king from moving backward but at the same time they don't
-        allow the king to capture the checking piece. (This is a special case and needs to be handled separately
-        for now)
-        */
 
         /* ----------------------------- STANDARD MOVES ----------------------------- */
 
@@ -607,12 +530,48 @@ std::vector<U16> Board::_getMoves()
         }
 
         /* ------------------------------- KING MOVES ------------------------------- */
-    }
-    else
-    {
-        // only king moves
-    }
+
+        _bitboard = get_king_attack(king_idx) & ~_enemy_attack_bb & ~_occ_bitboards[playerSide<WhiteMove>()] & sadsauqre_bb;
+
+        while(_bitboard)
+        {
+            idx2 = bitScanForward(_bitboard);
+            CLEAR_BIT(_bitboard, idx2);
+            moves.push_back(MAKE_MOVE(0, king_idx, idx2));
+        }
+
+        /* If a move that makes the  */
+        if constexpr ((WhiteMove && Kcastle) || (!WhiteMove && kcastle))
+        {
+            // player kingside castle possible
+            if( !(kingsideCastleMask<WhiteMove>() & (_enemy_attack_bb | (_occ_bitboards[playerSide<WhiteMove>()] & ~_piece_bitboards[playerPiece<WhiteMove>(K)]))) )
+            {
+                moves.push_back(MAKE_MOVE(0b0011000000000000, king_idx, kingsideCastleTarget<WhiteMove>()));
+            }
+        }
+        if constexpr ((WhiteMove && Qcastle) || (!WhiteMove && qcastle))
+        {
+            // player queenside castle possible
+            if( !(queensideCastleMask<WhiteMove>() & (_enemy_attack_bb | (_occ_bitboards[playerSide<WhiteMove>()] & ~_piece_bitboards[playerPiece<WhiteMove>(K)]))) )
+            {
+                moves.push_back(MAKE_MOVE(0b0011000000000000, king_idx, queensideCastleTarget<WhiteMove>()));
+            }
+        }
+
+        break;
     
+    default:
+        /* only king moves (no castling) */
+        _bitboard = get_king_attack(king_idx) & ~_enemy_attack_bb & ~_occ_bitboards[playerSide<WhiteMove>()] & ~_get_sadsquare(king_idx, checkmask);
+
+        while(_bitboard)
+        {
+            idx2 = bitScanForward(_bitboard);
+            CLEAR_BIT(_bitboard, idx2);
+            moves.push_back(MAKE_MOVE(0, king_idx, idx2));
+        }
+    }
+
     return moves;
 }
 
