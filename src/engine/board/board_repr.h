@@ -44,6 +44,9 @@ private:
     template<bool WhiteMove, bool ENPoss, bool Kcastle, bool Qcastle, bool kcastle, bool qcastle>
     std::vector<U16> _getMoves();
 
+    template<bool WhiteMove>
+    bool _valid_en_passant();
+
 public:   
     U64 _piece_bitboards[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     U64 _occ_bitboards[3] = {0, 0, 0};

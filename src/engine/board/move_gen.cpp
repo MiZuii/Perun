@@ -158,6 +158,49 @@ constexpr int queensideCastleTarget()
     }
 }
 
+template<bool WhiteMove>
+_ForceInline bool enPassantPossible(U64 pawns_map)
+{
+    if constexpr(WhiteMove)
+    {
+        return ROW_5 & pawns_map;
+    }
+    else
+    {
+        return ROW_4 & pawns_map;
+    }
+}
+
+template<bool WhiteMove>
+bool Board::_valid_en_passant()
+{
+    U64 bishops = _piece_bitboards[playerPiece<WhiteMove>(B)] | _piece_bitboards[playerPiece<WhiteMove>(Q)];  
+    U64 rooks = _piece_bitboards[playerPiece<WhiteMove>(R)] | _piece_bitboards[playerPiece<WhiteMove>(Q)];
+    U64 king = _piece_bitboards[playerPiece<WhiteMove>(K)];
+    int idx;
+
+    while(bishops)
+    {
+        idx = bitScanForward(bishops);
+        if(get_bishop_attack(idx) & king)
+        {
+            return false;
+        }
+        CLEAR_BIT(bishops, idx);
+    }
+
+    while(rooks)
+    {
+        idx = bitScanForward(rooks);
+        if(get_rook_attack(idx) & king)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 /* -------------------------------------------------------------------------- */
 /*                               MOVE GENERATION                              */
 /* -------------------------------------------------------------------------- */
@@ -506,6 +549,64 @@ std::vector<U16> Board::_getMoves()
                 idx2 = bitScanForward(_bitboard2);
                 CLEAR_BIT(_bitboard2, idx2);
                 moves.push_back(MAKE_MOVE(0, idx, idx2));
+            }
+        }
+
+        if constexpr (ENPoss)
+        {
+
+            // constexpr checking if there are any pawns that are even on the proper rank to capture en passant
+            // this will prune a lot of calculating in the begining of the game as there are a lot of not
+            // capturable pawn double pushes.
+
+            if(enPassantPossible<WhiteMove>(_piece_bitboards[playerPiece<WhiteMove>(P)] & ~rook_pins))
+            {
+
+                if constexpr(WhiteMove)
+                {
+                    _bitboard = _piece_bitboards[playerPiece<WhiteMove>(P)] & get_black_pawn_attack(_en_passant);
+                }
+                else
+                {
+                    _bitboard = _piece_bitboards[playerPiece<WhiteMove>(P)] & get_white_pawn_attack(_en_passant);
+                }
+
+                // there are maximum 2(2 is very very rare 1 is more likely soo this is just one move to analyze)
+                // second condition stops the loop if there is a check and en passant doens't stop it
+                while(_bitboard &&  (1UL << _en_passant) & checkmask)
+                {
+                    idx = bitScanForward(_bitboard)
+                    CLEAR_BIT(_bitboard, idx);
+
+                    // make move
+                    CLEAR_BIT(_occ_bitboards[Side::both], idx); // clear pawn from previous
+                    SET_BIT(_occ_bitboards[Side::both], _en_passant); // set pawn on the en passant square
+                    if constexpr(WhiteMove)
+                    {
+                        CLEAR_BIT(_occ_bitboards[Side::both], _en_passant+8);
+                    }
+                    else
+                    {
+                        CLEAR_BIT(_occ_bitboards[Side::both], _en_passant-8);
+                    }
+
+                    if(_valid_en_passant())
+                    {
+                        moves.push_back(MAKE_MOVE(0, idx, _en_passant));
+                    }
+
+                    // unmake move
+                    SET_BIT(_occ_bitboards[Side::both], idx);
+                    if constexpr(WhiteMove)
+                    {
+                        SET_BIT(_occ_bitboards[Side::both], _en_passant+8);
+                    }
+                    else
+                    {
+                        SET_BIT(_occ_bitboards[Side::both], _en_passant-8);
+                    }
+                    CLEAR_BIT(_occ_bitboards[Side::both], _en_passant);
+                }
             }
         }
 
