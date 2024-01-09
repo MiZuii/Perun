@@ -425,25 +425,22 @@ std::vector<U16> Board::_getMoves()
         /* -------------------------------- PAWNMOVES ------------------------------- */
 
         _bitboard = _piece_bitboards[playerPiece<WhiteMove>(P)];
-        _bitboard2 = _bitboard & rook_pins; // pawns pined only by
+        _bitboard2 = _bitboard & rook_pins; // pawns pined only by rooks
         _bitboard3 = _bitboard & bishop_pins; // pawns pinned by bishops
         _bitboard4 = _bitboard & ~(rook_pins | bishop_pins); //not pinned pawns;
 
-        // this can be optimized (maybe consider puting this inside the while??? how often two> pawns are pinned by the rooks anyway?)
-        // provide all pawn moves and store in _bitboard(rookpinned moves)
+        U64 forward_pawn_moves;
+
+        //farward move for all
         if constexpr (WhiteMove)
         {
-            // simple one step forward
-            _bitboard = ((_bitboard2 & ~(_occ_bitboards[enemySide<WhiteMove>()] >> 8)) << 8) & movemask & rook_pins;
-            // add seccond step forward for pawns that meet the criteria
-            _bitboard |= ((_bitboard & ROW_3 & ~(_occ_bitboards[enemySide<WhiteMove>()] >> 8)) << 8) & movemask; // is & rook_pins needed here?
+            forward_pawn_moves = (((_bitboard & ~(_occ_bitboards[enemySide<WhiteMove>()] >> 8)) << 8) |
+                  ((_bitboard & ROW_2 & ~(_occ_bitboards[enemySide<WhiteMove>()] >> 16)) << 16)) & movemask;
         }
         else
         {
-            // simple one step forward
-            _bitboard = ((_bitboard2 & ~(_occ_bitboards[enemySide<WhiteMove>()] << 8)) >> 8) & movemask & rook_pins;
-            // add seccond step forward for pawns that meet the criteria
-            _bitboard |= ((_bitboard & ROW_6 & ~(_occ_bitboards[enemySide<WhiteMove>()] << 8)) >> 8) & movemask; // is & rook_pins needed here?
+            forward_pawn_moves = (((_bitboard & ~(_occ_bitboards[enemySide<WhiteMove>()] << 8)) >> 8) |
+                  ((_bitboard & ROW_2 & ~(_occ_bitboards[enemySide<WhiteMove>()] << 16)) >> 16)) & movemask;
         }
 
         while(_bitboard2)
@@ -451,16 +448,14 @@ std::vector<U16> Board::_getMoves()
             idx = bitScanForward(_bitboard2);
             CLEAR_BIT(_bitboard2, idx);
 
-            while(_bitboard & cols_get[idx % 8])
+            _bitboard = forward_pawn_moves & cols_get[idx % 8] & rook_pins;
+            while(_bitboard)
             {
-                idx2 = bitScanForward(_bitboard & cols_get[idx % 8]);
+                idx2 = bitScanForward(_bitboard);
                 CLEAR_BIT(_bitboard, idx2);
                 moves.push_back(MAKE_MOVE(0, idx, idx2));
             }
         }
-
-        // this can be optimized
-        // provide all pawn attacks, store in _bitboard/_bitboard2
 
         while(_bitboard3)
         {
@@ -484,22 +479,6 @@ std::vector<U16> Board::_getMoves()
             }
         }
 
-        // standard no pinned pawns pushes
-        if constexpr (WhiteMove)
-        {
-            // simple one step forward
-            _bitboard = ((_bitboard4 & ~(_occ_bitboards[enemySide<WhiteMove>()] >> 8)) << 8) & movemask;
-            // add seccond step forward for pawns that meet the criteria
-            _bitboard |= ((_bitboard & ROW_3 & ~(_occ_bitboards[enemySide<WhiteMove>()] >> 8)) << 8) & movemask; // is & rook_pins needed here?
-        }
-        else
-        {
-            // simple one step forward
-            _bitboard = ((_bitboard4 & ~(_occ_bitboards[enemySide<WhiteMove>()] << 8)) >> 8) & movemask;
-            // add seccond step forward for pawns that meet the criteria
-            _bitboard |= ((_bitboard & ROW_6 & ~(_occ_bitboards[enemySide<WhiteMove>()] << 8)) >> 8) & movemask; // is & rook_pins needed here?
-        }
-
         while(_bitboard4)
         {
             idx = bitScanForward(_bitboard4);
@@ -514,9 +493,10 @@ std::vector<U16> Board::_getMoves()
                 _bitboard2 = get_black_pawn_attack(idx) & _occ_bitboards[enemySide<WhiteMove>()] & checkmask;
             }
 
-            while(_bitboard & cols_get[idx % 8])
+            _bitboard = forward_pawn_moves & cols_get[idx % 8];
+            while(_bitboard)
             {
-                idx2 = bitScanForward(_bitboard & cols_get[idx % 8]);
+                idx2 = bitScanForward(_bitboard);
                 CLEAR_BIT(_bitboard, idx2);
                 moves.push_back(MAKE_MOVE(0, idx, idx2));
             }

@@ -5,7 +5,9 @@
 #include "engine/utils/attack_tables/attack_tables.h"
 #include "engine/utils/attack_tables/attack_tables_gen.h"
 #include "engine/board/board_repr.h"
-#define MAKE_MOVE(flag, src_idx, target_idx) ((flag) | ((src_idx) << 6) | (target_idx))
+
+#include <chrono>
+
 int main(void) {
 #if DEBUG
 
@@ -21,15 +23,24 @@ int main(void) {
     // std::wcout << b.toWString();
 
     // Board test1("8/2r3b1/8/q7/1NPP4/1BKN3r/4R3/8 w KQkq - 0 1");
-    // test commit
-    Board test1("k3r3/8/8/8/2nQ4/4K3/8/8 w - - 0 1");
-
-    moves = test1.getMoves();
-    std::cout << "test1 moves:" << std::endl;
-    for(auto move : moves)
+    
+    // perft XD?15834ms
+    auto start = std::chrono::high_resolution_clock::now();
+    Board test1;
+    for (size_t i = 0; i < 119060324; i++)
     {
-        std::cout << Board::moveToString(move) << std::endl;
+        test1.getMoves();
     }
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "pseudo perft result: " << duration.count() << "ms" << std::endl;
+
+    // moves = test1.getMoves();
+    // std::cout << "test1 moves:" << std::endl;
+    // for(auto move : moves)
+    // {
+    //     std::cout << Board::moveToString(move) << std::endl;
+    // }
 
 #endif
     return 0;
