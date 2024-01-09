@@ -114,6 +114,7 @@ Board::Board(FEN_t fen)
                 row_tokeni++;
             }
 
+            delete sub_iss;
             break;
 
         case 1:
@@ -183,8 +184,6 @@ Board::Board(FEN_t fen)
 
         tokeni++;
     }
-
-    delete sub_iss;
 }
 
 Piece Board::charToPiece(char pieceChar)
@@ -610,18 +609,38 @@ FEN_t Board::getFEN()
     return ret;
 }
 
-std::string Board::moveToString(U16 move)
+std::string Board::moveToString(Move_t move)
 {
     std::string ret;
-    ret += Board::intToField((move >> 6) & 0b111111);
-    ret += Board::intToRank((move >> 6) & 0b111111);
+    ret += Board::intToField(getSourceSquare(move));
+    ret += Board::intToRank(getSourceSquare(move));
     ret += "/";
-    ret += Board::intToField(move & 0b111111);
-    ret += Board::intToRank(move & 0b111111);
+    ret += Board::intToField(getTargetSquare(move));
+    ret += Board::intToRank(getTargetSquare(move));
+    ret += " ";
+    ret += Board::PieceToChar(getPromotionPiece(move));
+    if(getCaptureFlag(move))
+    {
+        ret += " capture";
+    }
+    if(getDoublePawnPushFlag(move))
+    {
+        ret += " dpp";
+    }
+    if(getEnPassantFlag(move))
+    {
+        ret += " enpassant";
+    }
+    if(getCastleFlag(move))
+    {
+        ret += " castle";
+    }
+    if(getRookFlag(move))
+    {
+        ret += " rookmove";
+    }
     return ret;
 }
-
-#define FEN_REGEX "^(([PRNBKQprnbkq1-8]){1,8}\\/){7}(([PRNBKQprnbkq1-8]){1,8}) (w|b) (-|(K?Q?k?)q|(K?Q?kq?)|(K?Qk?q?)|(KQ?k?q?)) (-|[a-h][1-8]) (0|[1-9][0-9]*) (0|[1-9][0-9]*)$"
 
 bool Board::validFEN(FEN_t fen)
 {

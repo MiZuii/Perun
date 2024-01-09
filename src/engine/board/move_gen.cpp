@@ -1,8 +1,11 @@
 #include "board_repr.h"
 #include "../utils/attack_tables/attack_tables.h"
 
-// flags should already be at proper bit indexes
-#define MAKE_MOVE(flag, src_idx, target_idx) ((flag) | ((src_idx) << 6) | (target_idx))
+/*
+POSSIBLE OPTIMISATIONS FOR LATER:
+ + Pawn move pushing (it do be ineficient) and rook pinned pawns cannot promote but 
+   in this version they can.
+*/
 
 _ForceInline U64 Board::get_white_pawn_attack(int idx)
 {
@@ -201,12 +204,47 @@ bool Board::_valid_en_passant()
     return true;
 }
 
+template<bool WhiteMove>
+_Inline void pushPawnMoves(std::vector<Move_t> &moves, int src_idx, int trg_idx)
+{
+    if constexpr (WhiteMove)
+    {
+        if(trg_idx/8 == _8)
+        {
+            // promotion possible (white)
+            moves.push_back(makeMove(src_idx, trg_idx, playerPiece<WhiteMove>(Q), false, false, false, false, false));
+            moves.push_back(makeMove(src_idx, trg_idx, playerPiece<WhiteMove>(R), false, false, false, false, false));
+            moves.push_back(makeMove(src_idx, trg_idx, playerPiece<WhiteMove>(B), false, false, false, false, false));
+            moves.push_back(makeMove(src_idx, trg_idx, playerPiece<WhiteMove>(N), false, false, false, false, false));
+        }
+        else
+        {
+            moves.push_back(makeMove(src_idx, trg_idx, no_piece, false, trg_idx-src_idx == 16, false, false, false));
+        }
+    }
+    else
+    {
+        if(trg_idx/8 == _1)
+        {
+            // promotion possible (black)
+            moves.push_back(makeMove(src_idx, trg_idx, playerPiece<WhiteMove>(Q), false, false, false, false, false));
+            moves.push_back(makeMove(src_idx, trg_idx, playerPiece<WhiteMove>(R), false, false, false, false, false));
+            moves.push_back(makeMove(src_idx, trg_idx, playerPiece<WhiteMove>(B), false, false, false, false, false));
+            moves.push_back(makeMove(src_idx, trg_idx, playerPiece<WhiteMove>(N), false, false, false, false, false));
+        }
+        else
+        {
+            moves.push_back(makeMove(src_idx, trg_idx, no_piece, false, src_idx-trg_idx == 16, false, false, false));
+        }
+    }
+}
+
 /* -------------------------------------------------------------------------- */
 /*                               MOVE GENERATION                              */
 /* -------------------------------------------------------------------------- */
 
 template<bool WhiteMove, bool ENPoss, bool Kcastle, bool Qcastle, bool kcastle, bool qcastle>
-std::vector<U16> Board::_getMoves()
+std::vector<Move_t> Board::_getMoves()
 {
 
     /*
@@ -225,7 +263,7 @@ std::vector<U16> Board::_getMoves()
     /* _bitboard(|2|3|4) are operational bitboards (like registers) */
     int idx, idx2, check_count=0, king_idx = bit_index(_piece_bitboards[playerPiece<WhiteMove>(K)]);
     U64 _bitboard, _bitboard2, _bitboard3, _bitboard4, _enemy_attack_bb=0, rook_pins=0, bishop_pins=0, checkmask=0, sadsauqre_bb=0, movemask;
-    std::vector<U16> moves;
+    std::vector<Move_t> moves;
 
     /* -------------------------- ENEMY ATTACK MAP FILL ------------------------- */
 
@@ -375,7 +413,7 @@ std::vector<U16> Board::_getMoves()
             {
                 idx2 = bitScanForward(_bitboard2);
                 CLEAR_BIT(_bitboard2, idx2);
-                moves.push_back(MAKE_MOVE(0, idx, idx2));
+                moves.push_back(makeMove(idx, idx2, no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, false));
             }
         }
 
@@ -394,7 +432,7 @@ std::vector<U16> Board::_getMoves()
             {
                 idx2 = bitScanForward(_bitboard2);
                 CLEAR_BIT(_bitboard2, idx2);
-                moves.push_back(MAKE_MOVE(0, idx, idx2));
+                moves.push_back(makeMove(idx, idx2, no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, false));
             }
         }
 
@@ -410,7 +448,7 @@ std::vector<U16> Board::_getMoves()
             {
                 idx2 = bitScanForward(_bitboard2);
                 CLEAR_BIT(_bitboard2, idx2);
-                moves.push_back(MAKE_MOVE(0, idx, idx2));
+                moves.push_back(makeMove(idx, idx2, no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, false));
             }
         }
 
@@ -429,7 +467,7 @@ std::vector<U16> Board::_getMoves()
             {
                 idx2 = bitScanForward(_bitboard2);
                 CLEAR_BIT(_bitboard2, idx2);
-                moves.push_back(MAKE_MOVE(0, idx, idx2));
+                moves.push_back(makeMove(idx, idx2, no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, true));
             }
         }
 
@@ -445,7 +483,7 @@ std::vector<U16> Board::_getMoves()
             {
                 idx2 = bitScanForward(_bitboard2);
                 CLEAR_BIT(_bitboard2, idx2);
-                moves.push_back(MAKE_MOVE(0, idx, idx2));
+                moves.push_back(makeMove(idx, idx2, no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, true));
             }
         }
 
@@ -461,7 +499,7 @@ std::vector<U16> Board::_getMoves()
             {
                 idx2 = bitScanForward(_bitboard2);
                 CLEAR_BIT(_bitboard2, idx2);
-                moves.push_back(MAKE_MOVE(0, idx, idx2));
+                moves.push_back(makeMove(idx, idx2, no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, false));
             }
         }
 
@@ -478,12 +516,12 @@ std::vector<U16> Board::_getMoves()
         if constexpr (WhiteMove)
         {
             forward_pawn_moves = (((_bitboard & ~(_occ_bitboards[enemySide<WhiteMove>()] >> 8)) << 8) |
-                  ((_bitboard & ROW_2 & ~(_occ_bitboards[enemySide<WhiteMove>()] >> 16)) << 16)) & movemask;
+                  ((_bitboard & ROW_2 & ~((_occ_bitboards[enemySide<WhiteMove>()] >> 16) | (_occ_bitboards[enemySide<WhiteMove>()] >> 8))) << 16)) & movemask;
         }
         else
         {
             forward_pawn_moves = (((_bitboard & ~(_occ_bitboards[enemySide<WhiteMove>()] << 8)) >> 8) |
-                  ((_bitboard & ROW_2 & ~(_occ_bitboards[enemySide<WhiteMove>()] << 16)) >> 16)) & movemask;
+                  ((_bitboard & ROW_2 & ~((_occ_bitboards[enemySide<WhiteMove>()] << 16) | (_occ_bitboards[enemySide<WhiteMove>()] << 8))) >> 16)) & movemask;
         }
 
         while(_bitboard2)
@@ -496,7 +534,7 @@ std::vector<U16> Board::_getMoves()
             {
                 idx2 = bitScanForward(_bitboard);
                 CLEAR_BIT(_bitboard, idx2);
-                moves.push_back(MAKE_MOVE(0, idx, idx2));
+                pushPawnMoves<WhiteMove>(moves, idx, idx2);
             }
         }
 
@@ -518,7 +556,7 @@ std::vector<U16> Board::_getMoves()
             {
                 idx2 = bitScanForward(_bitboard);
                 CLEAR_BIT(_bitboard, idx2);
-                moves.push_back(MAKE_MOVE(0, idx, idx2));
+                pushPawnMoves<WhiteMove>(moves, idx, idx2);
             }
         }
 
@@ -541,14 +579,14 @@ std::vector<U16> Board::_getMoves()
             {
                 idx2 = bitScanForward(_bitboard);
                 CLEAR_BIT(_bitboard, idx2);
-                moves.push_back(MAKE_MOVE(0, idx, idx2));
+                pushPawnMoves<WhiteMove>(moves, idx, idx2);
             }
 
             while(_bitboard2)
             {
                 idx2 = bitScanForward(_bitboard2);
                 CLEAR_BIT(_bitboard2, idx2);
-                moves.push_back(MAKE_MOVE(0, idx, idx2));
+                pushPawnMoves<WhiteMove>(moves, idx, idx2);
             }
         }
 
@@ -575,7 +613,7 @@ std::vector<U16> Board::_getMoves()
                 // second condition stops the loop if there is a check and en passant doens't stop it
                 while(_bitboard &&  (1UL << _en_passant) & checkmask)
                 {
-                    idx = bitScanForward(_bitboard)
+                    idx = bitScanForward(_bitboard);
                     CLEAR_BIT(_bitboard, idx);
 
                     // make move
@@ -590,9 +628,9 @@ std::vector<U16> Board::_getMoves()
                         CLEAR_BIT(_occ_bitboards[Side::both], _en_passant-8);
                     }
 
-                    if(_valid_en_passant())
+                    if(_valid_en_passant<WhiteMove>())
                     {
-                        moves.push_back(MAKE_MOVE(0, idx, _en_passant));
+                        moves.push_back(makeMove(idx, _en_passant, no_piece, true, false, true, false, false));
                     }
 
                     // unmake move
@@ -618,16 +656,15 @@ std::vector<U16> Board::_getMoves()
         {
             idx2 = bitScanForward(_bitboard);
             CLEAR_BIT(_bitboard, idx2);
-            moves.push_back(MAKE_MOVE(0, king_idx, idx2));
+            moves.push_back(makeMove(king_idx, idx2, no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, true, false));
         }
 
-        /* If a move that makes the  */
         if constexpr ((WhiteMove && Kcastle) || (!WhiteMove && kcastle))
         {
             // player kingside castle possible
             if( !(kingsideCastleMask<WhiteMove>() & (_enemy_attack_bb | (_occ_bitboards[playerSide<WhiteMove>()] & ~_piece_bitboards[playerPiece<WhiteMove>(K)]))) )
             {
-                moves.push_back(MAKE_MOVE(0b0011000000000000, king_idx, kingsideCastleTarget<WhiteMove>()));
+                moves.push_back(makeMove(king_idx, kingsideCastleTarget<WhiteMove>(), no_piece, false, false, false, true, false));
             }
         }
         if constexpr ((WhiteMove && Qcastle) || (!WhiteMove && qcastle))
@@ -635,7 +672,7 @@ std::vector<U16> Board::_getMoves()
             // player queenside castle possible
             if( !(queensideCastleMask<WhiteMove>() & (_enemy_attack_bb | (_occ_bitboards[playerSide<WhiteMove>()] & ~_piece_bitboards[playerPiece<WhiteMove>(K)]))) )
             {
-                moves.push_back(MAKE_MOVE(0b0011000000000000, king_idx, queensideCastleTarget<WhiteMove>()));
+                moves.push_back(makeMove(king_idx, queensideCastleTarget<WhiteMove>(), no_piece, false, false, false, true, false));
             }
         }
 
@@ -649,7 +686,7 @@ std::vector<U16> Board::_getMoves()
         {
             idx2 = bitScanForward(_bitboard);
             CLEAR_BIT(_bitboard, idx2);
-            moves.push_back(MAKE_MOVE(0, king_idx, idx2));
+            moves.push_back(makeMove(king_idx, idx2, no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, true, false));
         }
     }
 
@@ -662,7 +699,7 @@ std::vector<U16> Board::_getMoves()
 /*                       MOVE GENERATION TEMPLATE WRAPER                      */
 /* -------------------------------------------------------------------------- */
 
-std::vector<U16> Board::getMoves()
+std::vector<Move_t> Board::getMoves()
 {
 
     // consider changing it to multidimentional lookup array(if the array would work faster there are possibilities to increase the number of parameters)
@@ -734,5 +771,5 @@ std::vector<U16> Board::getMoves()
     if(_side_to_move == Side::black && _en_passant != NO_SQ && _castle_rights == 2) {return _getMoves<false, true, false, false, true, false>();}
     if(_side_to_move == Side::black && _en_passant != NO_SQ && _castle_rights == 1) {return _getMoves<false, true, false, false, false, true>();}
     if(_side_to_move == Side::black && _en_passant != NO_SQ && _castle_rights == 0) {return _getMoves<false, true, false, false, false, false>();}
-    return std::vector<U16>();
+    return std::vector<Move_t>();
 }

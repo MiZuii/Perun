@@ -3,13 +3,13 @@
 #include <inttypes.h>
 #include <string.h>
 
-typedef uint64_t U64;
-typedef uint16_t U16;
-typedef uint8_t U8;
-typedef std::string FEN_t;
-
 #define _ForceInline __always_inline
 #define _Inline inline
+
+typedef uint64_t U64;
+typedef uint32_t U32;
+typedef uint16_t U16;
+typedef uint8_t U8;
 
 /* --------------------------- PIECE TYPES DEFINES -------------------------- */
 
@@ -35,6 +35,98 @@ enum Side {
     black,
     both
 };
+
+/* -------------------------- MOVE DEFINES AND TYPE ------------------------- */
+
+typedef U32 Move_t;
+/* Move_t type description bit by bit
+bits 0-6    -> source square of the piece
+bits 6-11   -> target square of the piece to move to
+bits 12-16  -> promoted piece (no_piece enum if no promotion (12))
+bit  16     -> capture flag
+bit  17     -> double push flag
+bit  18     -> en passant flag
+bit  19     -> castle flag
+bit  20     -> rook move (this flag is used to update castling rights (queens also have this flag!))
+
+Below are flag getters
+*/
+
+#define SRC_MASK 0b111111
+#define TRG_MASK 0b111111000000
+#define TRG_SHIFT 6
+#define PRP_MASK 0b1111000000000000
+#define PRP_SHIFT 12
+
+#define CAP_FLAG_MASK 0b10000000000000000
+#define CAP_FLAG_SHIFT 16
+#define DPP_FLAG_MASK 0b100000000000000000
+#define DPP_FLAG_SHIFT 17
+#define ENP_FLAG_MASK 0b1000000000000000000
+#define ENP_FLAG_SHIFT 18
+#define CST_FLAG_MASK 0b10000000000000000000
+#define CST_FLAG_SHIFT 19
+#define ROK_FLAG_MASK 0b100000000000000000000
+#define ROK_FLAG_SHIFT 20
+
+_ForceInline int getSourceSquare(Move_t move)
+{
+    return move & SRC_MASK;
+}
+
+_ForceInline int getTargetSquare(Move_t move)
+{
+    return (move & TRG_MASK) >> TRG_SHIFT;
+}
+
+_ForceInline Piece getPromotionPiece(Move_t move)
+{
+    return static_cast<Piece>((move & PRP_MASK) >> PRP_SHIFT);
+}
+
+_ForceInline bool getCaptureFlag(Move_t move)
+{
+    return move & CAP_FLAG_MASK;
+}
+
+_ForceInline bool getDoublePawnPushFlag(Move_t move)
+{
+    return move & DPP_FLAG_MASK;
+}
+
+_ForceInline bool getEnPassantFlag(Move_t move)
+{
+    return move & ENP_FLAG_MASK;
+}
+
+_ForceInline bool getCastleFlag(Move_t move)
+{
+    return move & CST_FLAG_MASK;
+}
+
+_ForceInline bool getRookFlag(Move_t move)
+{
+    return move & ROK_FLAG_MASK;
+}
+
+_ForceInline Move_t makeMove(int source_square,
+                             int target_square,
+                             Piece promoted_piece,
+                             bool capture, 
+                             bool double_pawn_push, 
+                             bool en_passant, 
+                             bool castle,
+                             bool rook_move)
+{
+    return ((Move_t)castle << CST_FLAG_SHIFT) | ((Move_t)en_passant << ENP_FLAG_SHIFT) | 
+           ((Move_t)capture << CAP_FLAG_SHIFT) | ((Move_t)double_pawn_push << DPP_FLAG_SHIFT) |
+           ((Move_t)rook_move << ROK_FLAG_SHIFT) |
+           (promoted_piece << PRP_SHIFT) | (target_square << TRG_SHIFT) | (source_square);
+}
+
+
+
+typedef std::string FEN_t;
 
 /* ----------------------------- SQUARE DEFINES ----------------------------- */
 
@@ -129,3 +221,7 @@ enum Side {
 #define H8 56
 
 #define NO_SQ 64
+
+/* --------------------------------- RANDOM --------------------------------- */
+#define FEN_REGEX "^(([PRNBKQprnbkq1-8]){1,8}\\/){7}(([PRNBKQprnbkq1-8]){1,8}) (w|b) (-|(K?Q?k?)q|(K?Q?kq?)|(K?Qk?q?)|(KQ?k?q?)) (-|[a-h][1-8]) (0|[1-9][0-9]*) (0|[1-9][0-9]*)$"
+

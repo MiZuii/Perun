@@ -4,7 +4,7 @@ message("-- Cmake config in: ${CMAKE_HOME_DIRECTORY}")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -Wextra -pedantic")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -Wextra -pedantic -Wimplicit-fallthrough=0")
 
 # Set the build type to Debug
 set(CMAKE_BUILD_TYPE Debug)
@@ -30,9 +30,6 @@ file(GLOB_RECURSE HEADER_FILES ${SOURCE_DIR}/*.h)
 # Find .cpp files
 file(GLOB_RECURSE SOURCE_FILES ${SOURCE_DIR}/*.cpp)
 
-# specify main target
-add_executable(main ${SOURCE_FILES} ${HEADER_FILES})
-
 # config include list
 set(HEADER_DIRS_LIST "")
 foreach(HEADER_FILE ${HEADER_FILES})
@@ -42,6 +39,6 @@ endforeach()
 list(REMOVE_DUPLICATES HEADER_DIRS_LIST)
 message(" + ${HEADER_DIRS_LIST}")
 
+# specify main target
+add_executable(main ${SOURCE_FILES} ${HEADER_FILES})
 target_include_directories(main PRIVATE HEADER_DIRS_LIST)
-
-
