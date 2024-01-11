@@ -186,6 +186,20 @@ Board::Board(FEN_t fen)
     }
 }
 
+Board &Board::operator=(const Board &other)
+{
+    _side_to_move = other._side_to_move;
+    _castle_rights = other._castle_rights;
+    _en_passant = other._en_passant;
+    _halfmove_clock = other._halfmove_clock;
+    _fullmove_clock = other._fullmove_clock;
+
+    std::copy(other._piece_bitboards, other._piece_bitboards + 12, _piece_bitboards);
+    std::copy(other._occ_bitboards, other._occ_bitboards + 3, _occ_bitboards);
+    
+    return *this;
+}
+
 Piece Board::charToPiece(char pieceChar)
 {
     switch (pieceChar)
@@ -639,6 +653,17 @@ std::string Board::moveToString(Move_t move)
     {
         ret += " rookmove";
     }
+    return ret;
+}
+
+std::string Board::moveToStringShort(Move_t move)
+{
+    std::string ret;
+    ret += Board::intToField(getSourceSquare(move));
+    ret += Board::intToRank(getSourceSquare(move));
+    ret += "/";
+    ret += Board::intToField(getTargetSquare(move));
+    ret += Board::intToRank(getTargetSquare(move));
     return ret;
 }
 

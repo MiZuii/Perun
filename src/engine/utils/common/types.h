@@ -13,7 +13,25 @@ typedef uint8_t U8;
 
 /* --------------------------- PIECE TYPES DEFINES -------------------------- */
 
-// DONT CHANGE ENUMERATION ORDER!!!
+enum Side {
+    white,
+    black,
+    both
+};
+
+constexpr Side opositeSide(Side side)
+{
+    if (side == Side::white)
+    {
+        return Side::black;
+    }
+    else 
+    {
+        return Side::white;
+    }
+}
+
+/* If enumeration order is to be changed the opositePiece method needs to be updated */
 enum Piece {
     K,
     Q,
@@ -30,11 +48,50 @@ enum Piece {
     no_piece
 };
 
-enum Side {
-    white,
-    black,
-    both
-};
+constexpr Piece whitePieces[6] = {K, Q, B, N, R, P};
+constexpr Piece blackPieces[6] = {k, q, b, n, r, p};
+
+constexpr Piece getColoredQueen(Side side)
+{
+    if(side == Side::white)
+    {
+        return Q;
+    }
+    else
+    {
+        return q;
+    }
+}
+
+constexpr bool isWhitePiece(Piece piece)
+{
+    if (piece >= Piece::K && piece <= Piece::P)
+    {
+        return true;
+    }
+    return false;
+}
+
+constexpr bool isBlackPiece(Piece piece)
+{
+    if (piece >= Piece::k && piece <= Piece::p)
+    {
+        return true;
+    }
+    return false;
+}
+
+constexpr Piece opositePiece(Piece piece) {
+    if (isWhitePiece(piece)) {
+        return static_cast<Piece>(static_cast<int>(piece) + 6);
+    }
+
+    else if (isBlackPiece(piece)) {
+        return static_cast<Piece>(static_cast<int>(piece) - 6);
+    }
+
+    return Piece::no_piece;
+}
 
 /* -------------------------- MOVE DEFINES AND TYPE ------------------------- */
 
@@ -55,19 +112,23 @@ Below are flag getters
 #define SRC_MASK 0b111111
 #define TRG_MASK 0b111111000000
 #define TRG_SHIFT 6
-#define PRP_MASK 0b1111000000000000
-#define PRP_SHIFT 12
+#define SRP_MASK 0b1111000000000000
+#define SRP_SHIFT 12
+#define PRP_MASK 0b11110000000000000000
+#define PRP_SHIFT 16
 
-#define CAP_FLAG_MASK 0b10000000000000000
-#define CAP_FLAG_SHIFT 16
-#define DPP_FLAG_MASK 0b100000000000000000
-#define DPP_FLAG_SHIFT 17
-#define ENP_FLAG_MASK 0b1000000000000000000
-#define ENP_FLAG_SHIFT 18
-#define CST_FLAG_MASK 0b10000000000000000000
-#define CST_FLAG_SHIFT 19
-#define ROK_FLAG_MASK 0b100000000000000000000
-#define ROK_FLAG_SHIFT 20
+#define CAP_FLAG_MASK 0b100000000000000000000
+#define CAP_FLAG_SHIFT 20
+#define DPP_FLAG_MASK 0b1000000000000000000000
+#define DPP_FLAG_SHIFT 21
+#define ENP_FLAG_MASK 0b10000000000000000000000
+#define ENP_FLAG_SHIFT 22
+#define CST_FLAG_MASK 0b100000000000000000000000
+#define CST_FLAG_SHIFT 23
+#define ROK_FLAG_MASK 0b1000000000000000000000000
+#define ROK_FLAG_SHIFT 24
+#define NPP_FLAG_MASK 0b10000000000000000000000000
+#define NPP_FLAG_SHIFT 25
 
 _ForceInline int getSourceSquare(Move_t move)
 {
@@ -77,6 +138,11 @@ _ForceInline int getSourceSquare(Move_t move)
 _ForceInline int getTargetSquare(Move_t move)
 {
     return (move & TRG_MASK) >> TRG_SHIFT;
+}
+
+_ForceInline Piece getSourcePiece(Move_t move)
+{
+    return static_cast<Piece>((move & SRP_MASK) >> SRP_SHIFT);
 }
 
 _ForceInline Piece getPromotionPiece(Move_t move)
@@ -109,18 +175,26 @@ _ForceInline bool getRookFlag(Move_t move)
     return move & ROK_FLAG_MASK;
 }
 
-_ForceInline Move_t makeMove(int source_square,
+_ForceInline bool getPawnPushFlag(Move_t move)
+{
+    return move & NPP_FLAG_MASK;
+}
+
+_ForceInline Move_t createMove(int source_square,
                              int target_square,
+                             Piece source_piece,
                              Piece promoted_piece,
                              bool capture, 
                              bool double_pawn_push, 
                              bool en_passant, 
                              bool castle,
-                             bool rook_move)
+                             bool rook_move,
+                             bool pawn_push)
 {
     return ((Move_t)castle << CST_FLAG_SHIFT) | ((Move_t)en_passant << ENP_FLAG_SHIFT) | 
            ((Move_t)capture << CAP_FLAG_SHIFT) | ((Move_t)double_pawn_push << DPP_FLAG_SHIFT) |
-           ((Move_t)rook_move << ROK_FLAG_SHIFT) |
+           ((Move_t)rook_move << ROK_FLAG_SHIFT) | ((Move_t)source_piece << SRP_SHIFT ) |
+           ((Move_t)pawn_push << NPP_FLAG_SHIFT) |
            (promoted_piece << PRP_SHIFT) | (target_square << TRG_SHIFT) | (source_square);
 }
 

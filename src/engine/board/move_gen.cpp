@@ -3,7 +3,7 @@
 
 /*
 POSSIBLE OPTIMISATIONS FOR LATER:
- + Pawn move pushing (it do be ineficient) and rook pinned pawns cannot promote but 
+ + Pawn move pushing (it do be ineficient) and rook pinned pawns cannot promote but
    in this version they can.
 */
 
@@ -58,27 +58,34 @@ _ForceInline U64 Board::get_queen_attack(int idx)
 /* -------------------------------------------------------------------------- */
 
 template<bool WhiteMove>
-constexpr Piece enemyPiece(Piece piece) {
+constexpr Piece playerPiece(Piece piece) {
     if constexpr (WhiteMove)
     {
-        return static_cast<Piece>( static_cast<int>(piece) + 6 );
+        if (isWhitePiece(piece))
+        {
+            return piece;
+        }
+        else
+        {
+            return opositePiece(piece);
+        }
     }
     else
     {
-        return piece;
+        if (isBlackPiece(piece))
+        {
+            return piece;
+        }
+        else
+        {
+            return opositePiece(piece);
+        }
     }
 }
 
 template<bool WhiteMove>
-constexpr Piece playerPiece(Piece piece) {
-    if constexpr (WhiteMove)
-    {
-        return piece;
-    }
-    else
-    {
-        return static_cast<Piece>( static_cast<int>(piece) + 6 );
-    }
+constexpr Piece enemyPiece(Piece piece) {
+    return opositePiece(playerPiece<WhiteMove>(piece));
 }
 
 template<bool WhiteMove>
@@ -205,21 +212,21 @@ bool Board::_valid_en_passant()
 }
 
 template<bool WhiteMove>
-_Inline void pushPawnMoves(std::vector<Move_t> &moves, int src_idx, int trg_idx)
+_Inline void pushPawnMoves(std::vector<Move_t> &moves, int src_idx, int trg_idx, bool capture_flag)
 {
     if constexpr (WhiteMove)
     {
         if(trg_idx/8 == _8)
         {
             // promotion possible (white)
-            moves.push_back(makeMove(src_idx, trg_idx, playerPiece<WhiteMove>(Q), false, false, false, false, false));
-            moves.push_back(makeMove(src_idx, trg_idx, playerPiece<WhiteMove>(R), false, false, false, false, false));
-            moves.push_back(makeMove(src_idx, trg_idx, playerPiece<WhiteMove>(B), false, false, false, false, false));
-            moves.push_back(makeMove(src_idx, trg_idx, playerPiece<WhiteMove>(N), false, false, false, false, false));
+            moves.push_back(createMove(src_idx, trg_idx, playerPiece<WhiteMove>(P), playerPiece<WhiteMove>(Q), capture_flag, false, false, false, false, true));
+            moves.push_back(createMove(src_idx, trg_idx, playerPiece<WhiteMove>(P), playerPiece<WhiteMove>(R), capture_flag, false, false, false, false, true));
+            moves.push_back(createMove(src_idx, trg_idx, playerPiece<WhiteMove>(P), playerPiece<WhiteMove>(B), capture_flag, false, false, false, false, true));
+            moves.push_back(createMove(src_idx, trg_idx, playerPiece<WhiteMove>(P), playerPiece<WhiteMove>(N), capture_flag, false, false, false, false, true));
         }
         else
         {
-            moves.push_back(makeMove(src_idx, trg_idx, no_piece, false, trg_idx-src_idx == 16, false, false, false));
+            moves.push_back(createMove(src_idx, trg_idx, playerPiece<WhiteMove>(P), no_piece, capture_flag, trg_idx-src_idx == 16, false, false, false, true));
         }
     }
     else
@@ -227,14 +234,14 @@ _Inline void pushPawnMoves(std::vector<Move_t> &moves, int src_idx, int trg_idx)
         if(trg_idx/8 == _1)
         {
             // promotion possible (black)
-            moves.push_back(makeMove(src_idx, trg_idx, playerPiece<WhiteMove>(Q), false, false, false, false, false));
-            moves.push_back(makeMove(src_idx, trg_idx, playerPiece<WhiteMove>(R), false, false, false, false, false));
-            moves.push_back(makeMove(src_idx, trg_idx, playerPiece<WhiteMove>(B), false, false, false, false, false));
-            moves.push_back(makeMove(src_idx, trg_idx, playerPiece<WhiteMove>(N), false, false, false, false, false));
+            moves.push_back(createMove(src_idx, trg_idx, playerPiece<WhiteMove>(P), playerPiece<WhiteMove>(Q), capture_flag, false, false, false, false, true));
+            moves.push_back(createMove(src_idx, trg_idx, playerPiece<WhiteMove>(P), playerPiece<WhiteMove>(R), capture_flag, false, false, false, false, true));
+            moves.push_back(createMove(src_idx, trg_idx, playerPiece<WhiteMove>(P), playerPiece<WhiteMove>(B), capture_flag, false, false, false, false, true));
+            moves.push_back(createMove(src_idx, trg_idx, playerPiece<WhiteMove>(P), playerPiece<WhiteMove>(N), capture_flag, false, false, false, false, true));
         }
         else
         {
-            moves.push_back(makeMove(src_idx, trg_idx, no_piece, false, src_idx-trg_idx == 16, false, false, false));
+            moves.push_back(createMove(src_idx, trg_idx, playerPiece<WhiteMove>(P), no_piece, capture_flag, src_idx-trg_idx == 16, false, false, false, true));
         }
     }
 }
@@ -246,19 +253,6 @@ _Inline void pushPawnMoves(std::vector<Move_t> &moves, int src_idx, int trg_idx)
 template<bool WhiteMove, bool ENPoss, bool Kcastle, bool Qcastle, bool kcastle, bool qcastle>
 std::vector<Move_t> Board::_getMoves()
 {
-
-    /*
-    Notes:
-     - Due to WhiteMove constexpr every call relying on side to play information should
-       be implemented as white but pass through appropriate constexpr functions.
-     - To make it more transparent the player playing is called player and the player
-       not playing is called enemy.
-    
-        example: call to _piece_bitboard[p] (previously ment getting black pawns now should be)
-                         _piece_bitboard[enemyPiece<WhiteMove>(P)] (which will provid in constexpr
-                                needed piece enum)
-
-    */
 
     /* _bitboard(|2|3|4) are operational bitboards (like registers) */
     int idx, idx2, check_count=0, king_idx = bit_index(_piece_bitboards[playerPiece<WhiteMove>(K)]);
@@ -413,7 +407,7 @@ std::vector<Move_t> Board::_getMoves()
             {
                 idx2 = bitScanForward(_bitboard2);
                 CLEAR_BIT(_bitboard2, idx2);
-                moves.push_back(makeMove(idx, idx2, no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, false));
+                moves.push_back(createMove(idx, idx2, playerPiece<WhiteMove>(N), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, false, false));
             }
         }
 
@@ -432,7 +426,7 @@ std::vector<Move_t> Board::_getMoves()
             {
                 idx2 = bitScanForward(_bitboard2);
                 CLEAR_BIT(_bitboard2, idx2);
-                moves.push_back(makeMove(idx, idx2, no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, false));
+                moves.push_back(createMove(idx, idx2, playerPiece<WhiteMove>(B), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, false, false));
             }
         }
 
@@ -448,7 +442,7 @@ std::vector<Move_t> Board::_getMoves()
             {
                 idx2 = bitScanForward(_bitboard2);
                 CLEAR_BIT(_bitboard2, idx2);
-                moves.push_back(makeMove(idx, idx2, no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, false));
+                moves.push_back(createMove(idx, idx2, playerPiece<WhiteMove>(B), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, false, false));
             }
         }
 
@@ -467,7 +461,7 @@ std::vector<Move_t> Board::_getMoves()
             {
                 idx2 = bitScanForward(_bitboard2);
                 CLEAR_BIT(_bitboard2, idx2);
-                moves.push_back(makeMove(idx, idx2, no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, true));
+                moves.push_back(createMove(idx, idx2, playerPiece<WhiteMove>(R), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, true, false));
             }
         }
 
@@ -483,7 +477,7 @@ std::vector<Move_t> Board::_getMoves()
             {
                 idx2 = bitScanForward(_bitboard2);
                 CLEAR_BIT(_bitboard2, idx2);
-                moves.push_back(makeMove(idx, idx2, no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, true));
+                moves.push_back(createMove(idx, idx2, playerPiece<WhiteMove>(R), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, true, false));
             }
         }
 
@@ -499,7 +493,7 @@ std::vector<Move_t> Board::_getMoves()
             {
                 idx2 = bitScanForward(_bitboard2);
                 CLEAR_BIT(_bitboard2, idx2);
-                moves.push_back(makeMove(idx, idx2, no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, false));
+                moves.push_back(createMove(idx, idx2, playerPiece<WhiteMove>(Q), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, false, false));
             }
         }
 
@@ -521,7 +515,7 @@ std::vector<Move_t> Board::_getMoves()
         else
         {
             forward_pawn_moves = (((_bitboard & ~(_occ_bitboards[enemySide<WhiteMove>()] << 8)) >> 8) |
-                  ((_bitboard & ROW_2 & ~((_occ_bitboards[enemySide<WhiteMove>()] << 16) | (_occ_bitboards[enemySide<WhiteMove>()] << 8))) >> 16)) & movemask;
+                  ((_bitboard & ROW_7 & ~((_occ_bitboards[enemySide<WhiteMove>()] << 16) | (_occ_bitboards[enemySide<WhiteMove>()] << 8))) >> 16)) & movemask;
         }
 
         while(_bitboard2)
@@ -534,7 +528,7 @@ std::vector<Move_t> Board::_getMoves()
             {
                 idx2 = bitScanForward(_bitboard);
                 CLEAR_BIT(_bitboard, idx2);
-                pushPawnMoves<WhiteMove>(moves, idx, idx2);
+                pushPawnMoves<WhiteMove>(moves, idx, idx2, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2));
             }
         }
 
@@ -556,7 +550,7 @@ std::vector<Move_t> Board::_getMoves()
             {
                 idx2 = bitScanForward(_bitboard);
                 CLEAR_BIT(_bitboard, idx2);
-                pushPawnMoves<WhiteMove>(moves, idx, idx2);
+                pushPawnMoves<WhiteMove>(moves, idx, idx2, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2));
             }
         }
 
@@ -579,14 +573,14 @@ std::vector<Move_t> Board::_getMoves()
             {
                 idx2 = bitScanForward(_bitboard);
                 CLEAR_BIT(_bitboard, idx2);
-                pushPawnMoves<WhiteMove>(moves, idx, idx2);
+                pushPawnMoves<WhiteMove>(moves, idx, idx2, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2));
             }
 
             while(_bitboard2)
             {
                 idx2 = bitScanForward(_bitboard2);
                 CLEAR_BIT(_bitboard2, idx2);
-                pushPawnMoves<WhiteMove>(moves, idx, idx2);
+                pushPawnMoves<WhiteMove>(moves, idx, idx2, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2));
             }
         }
 
@@ -630,7 +624,7 @@ std::vector<Move_t> Board::_getMoves()
 
                     if(_valid_en_passant<WhiteMove>())
                     {
-                        moves.push_back(makeMove(idx, _en_passant, no_piece, true, false, true, false, false));
+                        moves.push_back(createMove(idx, _en_passant, playerPiece<WhiteMove>(P), no_piece, true, false, true, false, false, true));
                     }
 
                     // unmake move
@@ -656,7 +650,7 @@ std::vector<Move_t> Board::_getMoves()
         {
             idx2 = bitScanForward(_bitboard);
             CLEAR_BIT(_bitboard, idx2);
-            moves.push_back(makeMove(king_idx, idx2, no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, true, false));
+            moves.push_back(createMove(king_idx, idx2, playerPiece<WhiteMove>(K), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, true, false, false));
         }
 
         if constexpr ((WhiteMove && Kcastle) || (!WhiteMove && kcastle))
@@ -664,7 +658,7 @@ std::vector<Move_t> Board::_getMoves()
             // player kingside castle possible
             if( !(kingsideCastleMask<WhiteMove>() & (_enemy_attack_bb | (_occ_bitboards[playerSide<WhiteMove>()] & ~_piece_bitboards[playerPiece<WhiteMove>(K)]))) )
             {
-                moves.push_back(makeMove(king_idx, kingsideCastleTarget<WhiteMove>(), no_piece, false, false, false, true, false));
+                moves.push_back(createMove(king_idx, kingsideCastleTarget<WhiteMove>(), playerPiece<WhiteMove>(K), no_piece, false, false, false, true, false, false));
             }
         }
         if constexpr ((WhiteMove && Qcastle) || (!WhiteMove && qcastle))
@@ -672,7 +666,7 @@ std::vector<Move_t> Board::_getMoves()
             // player queenside castle possible
             if( !(queensideCastleMask<WhiteMove>() & (_enemy_attack_bb | (_occ_bitboards[playerSide<WhiteMove>()] & ~_piece_bitboards[playerPiece<WhiteMove>(K)]))) )
             {
-                moves.push_back(makeMove(king_idx, queensideCastleTarget<WhiteMove>(), no_piece, false, false, false, true, false));
+                moves.push_back(createMove(king_idx, queensideCastleTarget<WhiteMove>(), playerPiece<WhiteMove>(K), no_piece, false, false, false, true, false, false));
             }
         }
 
@@ -686,7 +680,7 @@ std::vector<Move_t> Board::_getMoves()
         {
             idx2 = bitScanForward(_bitboard);
             CLEAR_BIT(_bitboard, idx2);
-            moves.push_back(makeMove(king_idx, idx2, no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, true, false));
+            moves.push_back(createMove(king_idx, idx2, playerPiece<WhiteMove>(K), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, true, false, false));
         }
     }
 

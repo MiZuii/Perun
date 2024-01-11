@@ -47,6 +47,9 @@ private:
     template<bool WhiteMove>
     bool _valid_en_passant();
 
+    // move making helper method
+    _Inline void movePiece(Side playing_side, int source_square, int target_square, Piece source_piece);
+
 public:   
     U64 _piece_bitboards[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     U64 _occ_bitboards[3] = {0, 0, 0};
@@ -62,13 +65,15 @@ public:
     int _castle_rights=0, _en_passant=NO_SQ;
     int _halfmove_clock=0, _fullmove_clock=0;
 
-    // methods
+
 
     Board();    // FEN_t of starting position is used to init
     Board(FEN_t fen);
     Board(const Board &board) = default;
     Board(Board &&board) = default;
     ~Board() = default;
+
+    Board &operator=(const Board &);
 
     std::vector<Move_t> getMoves(); // public template wrapper
     Board& makeMove(Move_t move);
@@ -90,6 +95,7 @@ public:
     static char intToField(U8 square);
     static char intToRank(U8 square);
     static std::string moveToString(Move_t move);
+    static std::string moveToStringShort(Move_t move);
 
     static bool validFEN(FEN_t fen);
 
