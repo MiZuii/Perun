@@ -31,6 +31,16 @@ constexpr Side opositeSide(Side side)
     }
 }
 
+enum PieceType {
+    KING,
+    QUEEN,
+    BISHOP,
+    KNIGHT,
+    ROOK,
+    PAWN,
+    NONE
+};
+
 /* If enumeration order is to be changed the opositePiece method needs to be updated */
 enum Piece {
     K,
@@ -48,6 +58,7 @@ enum Piece {
     no_piece
 };
 
+constexpr PieceType pieces[6] = {KING, QUEEN, BISHOP, KNIGHT, ROOK ,PAWN};
 constexpr Piece whitePieces[6] = {K, Q, B, N, R, P};
 constexpr Piece blackPieces[6] = {k, q, b, n, r, p};
 

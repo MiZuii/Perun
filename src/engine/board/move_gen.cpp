@@ -509,13 +509,13 @@ std::vector<Move_t> Board::_getMoves()
         //farward move for all
         if constexpr (WhiteMove)
         {
-            forward_pawn_moves = (((_bitboard & ~(_occ_bitboards[enemySide<WhiteMove>()] >> 8)) << 8) |
-                  ((_bitboard & ROW_2 & ~((_occ_bitboards[enemySide<WhiteMove>()] >> 16) | (_occ_bitboards[enemySide<WhiteMove>()] >> 8))) << 16)) & movemask;
+            forward_pawn_moves = (((_bitboard & ~(_occ_bitboards[Side::both] >> 8)) << 8) |
+                  ((_bitboard & ROW_2 & ~((_occ_bitboards[Side::both] >> 16) | (_occ_bitboards[Side::both] >> 8))) << 16)) & movemask;
         }
         else
         {
-            forward_pawn_moves = (((_bitboard & ~(_occ_bitboards[enemySide<WhiteMove>()] << 8)) >> 8) |
-                  ((_bitboard & ROW_7 & ~((_occ_bitboards[enemySide<WhiteMove>()] << 16) | (_occ_bitboards[enemySide<WhiteMove>()] << 8))) >> 16)) & movemask;
+            forward_pawn_moves = (((_bitboard & ~(_occ_bitboards[Side::both] << 8)) >> 8) |
+                  ((_bitboard & ROW_7 & ~((_occ_bitboards[Side::both] << 16) | (_occ_bitboards[Side::both] << 8))) >> 16)) & movemask;
         }
 
         while(_bitboard2)
