@@ -14,20 +14,20 @@ typedef uint8_t U8;
 /* --------------------------- PIECE TYPES DEFINES -------------------------- */
 
 enum Side {
-    white,
-    black,
-    both
+    WHITE,
+    BLACK,
+    BOTH
 };
 
 constexpr Side opositeSide(Side side)
 {
-    if (side == Side::white)
+    if (side == Side::WHITE)
     {
-        return Side::black;
+        return Side::BLACK;
     }
     else 
     {
-        return Side::white;
+        return Side::WHITE;
     }
 }
 
@@ -62,9 +62,34 @@ constexpr PieceType pieces[6] = {KING, QUEEN, BISHOP, KNIGHT, ROOK ,PAWN};
 constexpr Piece whitePieces[6] = {K, Q, B, N, R, P};
 constexpr Piece blackPieces[6] = {k, q, b, n, r, p};
 
+
+constexpr const Piece *getColoredPieces(Side sd)
+{
+    if (Side::WHITE == sd)
+    {
+        return whitePieces;
+    }
+    else 
+    {
+        return blackPieces;
+    }
+}
+
+constexpr Piece convertPiece(PieceType pt, Side sd)
+{
+    if(Side::WHITE == sd)
+    {
+        return static_cast<Piece>(pt);
+    }
+    else
+    {
+        return static_cast<Piece>(pt+6);
+    }
+}
+
 constexpr Piece getColoredQueen(Side side)
 {
-    if(side == Side::white)
+    if(side == Side::WHITE)
     {
         return Q;
     }

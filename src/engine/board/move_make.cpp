@@ -20,8 +20,8 @@ _Inline void Board::movePiece(Side playing_side, int source_square, int target_s
     CLEAR_BIT(_occ_bitboards[playing_side], source_square);
     SET_BIT(_occ_bitboards[playing_side], target_square);
 
-    CLEAR_BIT(_occ_bitboards[Side::both], source_square);
-    SET_BIT(_occ_bitboards[Side::both], target_square);
+    CLEAR_BIT(_occ_bitboards[Side::BOTH], source_square);
+    SET_BIT(_occ_bitboards[Side::BOTH], target_square);
 
     CLEAR_BIT(_piece_bitboards[source_piece], source_square);
     SET_BIT(_piece_bitboards[source_piece], target_square);
@@ -36,7 +36,7 @@ Board &Board::makeMove(Move_t move)
     int source_square = getSourceSquare(move);
     int target_square = getTargetSquare(move);
 
-    if(_side_to_move == Side::black)
+    if(_side_to_move == Side::BLACK)
     {
         _fullmove_clock += 1;
     }
@@ -53,7 +53,7 @@ Board &Board::makeMove(Move_t move)
 
     /* ----------------------------- HANDLE CASTLING ---------------------------- */
 
-    if(next_side == Side::black)
+    if(next_side == Side::BLACK)
     {
         if(_castle_rights & 0b1100)
         {
@@ -63,7 +63,7 @@ Board &Board::makeMove(Move_t move)
                 if(target_square == G1 && (_castle_rights & 0b1000))
                 {
                     // kingside castle
-                    movePiece(Side::white, H1, F1, R);
+                    movePiece(Side::WHITE, H1, F1, R);
                     CLEAR_BIT(_castle_rights, 3);
                     CLEAR_BIT(_castle_rights, 2);
                     return *this;
@@ -71,7 +71,7 @@ Board &Board::makeMove(Move_t move)
                 else if(target_square == C1 && (_castle_rights & 0b0100))
                 {
                     // queenside castle
-                    movePiece(Side::white, A1, D1, R);
+                    movePiece(Side::WHITE, A1, D1, R);
                     CLEAR_BIT(_castle_rights, 3);
                     CLEAR_BIT(_castle_rights, 2);
                     return *this;
@@ -104,7 +104,7 @@ Board &Board::makeMove(Move_t move)
                 if(target_square == G8 && (_castle_rights & 0b0010))
                 {
                     // kingside castle
-                    movePiece(Side::black, H8, F8, Piece::r);
+                    movePiece(Side::BLACK, H8, F8, Piece::r);
                     CLEAR_BIT(_castle_rights, 1);
                     CLEAR_BIT(_castle_rights, 0);
                     return *this;
@@ -112,7 +112,7 @@ Board &Board::makeMove(Move_t move)
                 else if(target_square == C8 && (_castle_rights & 0b0001))
                 {
                     // queenside castle
-                    movePiece(Side::black, A8, D8, Piece::r);
+                    movePiece(Side::BLACK, A8, D8, Piece::r);
                     CLEAR_BIT(_castle_rights, 1);
                     CLEAR_BIT(_castle_rights, 0);
                     return *this;
@@ -146,7 +146,7 @@ Board &Board::makeMove(Move_t move)
 
     if(getDoublePawnPushFlag(move))
     {
-        if(next_side == Side::white)
+        if(next_side == Side::WHITE)
         {
             _en_passant = target_square + 8;
         }
@@ -159,7 +159,7 @@ Board &Board::makeMove(Move_t move)
     // change bitboards according to move type
     if(getCaptureFlag(move))
     {
-        for(Piece enemy_piece_type : (next_side == Side::white ? whitePieces : blackPieces) )
+        for(Piece enemy_piece_type : (next_side == Side::WHITE ? whitePieces : blackPieces) )
         {
             // check which piece is not nececery as there cannot be two pieces on one square
             CLEAR_BIT(_piece_bitboards[enemy_piece_type], target_square);
@@ -169,7 +169,7 @@ Board &Board::makeMove(Move_t move)
 
     if(getEnPassantFlag(move))
     {
-        if(next_side == Side::black)
+        if(next_side == Side::BLACK)
         {
             CLEAR_BIT(_piece_bitboards[Piece::p], target_square-8);
             CLEAR_BIT(_occ_bitboards[next_side], target_square-8);
@@ -184,7 +184,7 @@ Board &Board::makeMove(Move_t move)
     int promotion_piece = getPromotionPiece(move);
     if(promotion_piece != Piece::no_piece)
     {
-        if(next_side == Side::black)
+        if(next_side == Side::BLACK)
         {
             CLEAR_BIT(_piece_bitboards[Piece::P], target_square);
             SET_BIT(_piece_bitboards[promotion_piece], target_square);

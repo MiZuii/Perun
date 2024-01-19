@@ -10,3 +10,7 @@
 #include <regex>
 #include <chrono>
 #include <iomanip>
+
+#ifdef x86_64
+#include <immintrin.h>
+#endif

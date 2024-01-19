@@ -41,16 +41,7 @@ public:
 class Board
 {
 private:
-    template<bool WhiteMove, bool ENPoss, bool Kcastle, bool Qcastle, bool kcastle, bool qcastle>
-    std::vector<Move_t> _getMoves();
 
-    template<bool WhiteMove>
-    bool _valid_en_passant();
-
-    // move making helper method
-    _Inline void movePiece(Side playing_side, int source_square, int target_square, Piece source_piece);
-
-public:   
     U64 _piece_bitboards[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     U64 _occ_bitboards[3] = {0, 0, 0};
 
@@ -61,16 +52,31 @@ public:
     0001 - black Queen side castle
     */
 
-    Side _side_to_move=Side::white;
+    Side _side_to_move=Side::WHITE;
     int _castle_rights=0, _en_passant=NO_SQ;
     int _halfmove_clock=0, _fullmove_clock=0;
 
+    // refreshable variables
+    U64 _enemy_attack_bb=0, _checkers=0, _rook_pins=0, _bishop_pins=0, _checkmask=0;
+    int king_idx;
 
 
+    template<bool WhiteMove, bool ENPoss, bool Kcastle, bool Qcastle, bool kcastle, bool qcastle>
+    std::vector<Move_t> _getMoves();
+    template<bool WhiteMove>
+    void _refresh();
+
+    template<bool WhiteMove>
+    bool _valid_en_passant();
+
+    // move making helper method
+    _Inline void movePiece(Side playing_side, int source_square, int target_square, Piece source_piece);
+
+public:
     Board();    // FEN_t of starting position is used to init
     Board(FEN_t fen);
-    Board(const Board &board) = default;
-    Board(Board &&board) = default;
+    Board(const Board &board);
+    Board(Board &&board) = delete;
     ~Board() = default;
 
     Board &operator=(const Board &);

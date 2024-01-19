@@ -324,7 +324,7 @@ U64 set_occupancy(int index, int bits_in_mask, U64 attack_mask)
     for (int count = 0; count < bits_in_mask; count++)
     {
         // get next bit index and pop it
-        int square = log2_64(LS1B(attack_mask));
+        int square = bit_index(attack_mask);
         CLEAR_BIT(attack_mask, square);
 
         // index here is used as a bit mask to generate different

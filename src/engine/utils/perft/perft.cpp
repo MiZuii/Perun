@@ -35,6 +35,7 @@ void perft(FEN_t fen, int depth)
     // first generate all moves for depth 0
     std::vector<Move_t> moves = b.getMoves();
 
+
     for(Move_t move : moves)
     {
         sub_count = 0;

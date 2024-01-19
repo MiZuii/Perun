@@ -38,79 +38,71 @@
 
 #define LS1B(x) (x) & -(x)
 
+#ifdef x86_64
+
+    #define bitScan(x) for(;x;x = _blsr_u64(x))
+
+    _ForceInline int bit_index(uint64_t x)
+    {
+        return _tzcnt_u64(x);
+    }
+
+    _ForceInline int bit_count(uint64_t bitboard)
+    {
+        return _popcnt64(bitboard);
+    }
+
+#endif
+
 constexpr uint64_t cols_get[8] = {H_COL, G_COL, F_COL, E_COL, D_COL, C_COL, B_COL, A_COL};
 constexpr uint64_t rows_get[8] = {ROW_1, ROW_2, ROW_3, ROW_4, ROW_5, ROW_6, ROW_7, ROW_8};
 
-constexpr int tab64[64] = {
-    63,  0, 58,  1, 59, 47, 53,  2,
-    60, 39, 48, 27, 54, 33, 42,  3,
-    61, 51, 37, 40, 49, 18, 28, 20,
-    55, 30, 34, 11, 43, 14, 22,  4,
-    62, 57, 46, 52, 38, 26, 32, 41,
-    50, 36, 17, 19, 29, 10, 13, 21,
-    56, 45, 25, 31, 35, 16,  9, 12,
-    44, 24, 15,  8, 23,  7,  6,  5};
+// constexpr int tab64[64] = {
+//     63,  0, 58,  1, 59, 47, 53,  2,
+//     60, 39, 48, 27, 54, 33, 42,  3,
+//     61, 51, 37, 40, 49, 18, 28, 20,
+//     55, 30, 34, 11, 43, 14, 22,  4,
+//     62, 57, 46, 52, 38, 26, 32, 41,
+//     50, 36, 17, 19, 29, 10, 13, 21,
+//     56, 45, 25, 31, 35, 16,  9, 12,
+//     44, 24, 15,  8, 23,  7,  6,  5};
 
-_ForceInline int log2_64 (uint64_t value)
-{
-    value |= value >> 1;
-    value |= value >> 2;
-    value |= value >> 4;
-    value |= value >> 8;
-    value |= value >> 16;
-    value |= value >> 32;
-    return tab64[((uint64_t)((value - (value >> 1))*0x07EDD5E59A4E28C2)) >> 58];
-}
+// _ForceInline int log2_64 (uint64_t value)
+// {
+//     value |= value >> 1;
+//     value |= value >> 2;
+//     value |= value >> 4;
+//     value |= value >> 8;
+//     value |= value >> 16;
+//     value |= value >> 32;
+//     return tab64[((uint64_t)((value - (value >> 1))*0x07EDD5E59A4E28C2)) >> 58];
+// }
 
-_ForceInline int bit_count(uint64_t bitboard)
-{
-    int counter=0;
-    while(bitboard)
-    {
-        counter++;
-        bitboard &= bitboard - 1;
-    }
-    return counter;
-}
+// constexpr int index64[64] = {
+//     0, 47,  1, 56, 48, 27,  2, 60,
+//    57, 49, 41, 37, 28, 16,  3, 61,
+//    54, 58, 35, 52, 50, 42, 21, 44,
+//    38, 32, 29, 23, 17, 11,  4, 62,
+//    46, 55, 26, 59, 40, 36, 15, 53,
+//    34, 51, 20, 43, 31, 22, 10, 45,
+//    25, 39, 14, 33, 19, 30,  9, 24,
+//    13, 18,  8, 12,  7,  6,  5, 63
+// };
 
-_ForceInline uint64_t leadingZeros(uint64_t x) {
-    return __builtin_ctzll(LS1B(x));
-}
+// constexpr U64 debruijn64 = 0x03f79d71b4cb0a89;
 
-// TODO: provide ifdefs for different compilers(__builtin_ctzll)
-// function to be used in code
-_ForceInline int bit_index(uint64_t x)
-{
-    // the bit index should return 64 if x == 0
-    // the king sadsquares lookup relies on that fact
-    return leadingZeros(x);
-}
-
-constexpr int index64[64] = {
-    0, 47,  1, 56, 48, 27,  2, 60,
-   57, 49, 41, 37, 28, 16,  3, 61,
-   54, 58, 35, 52, 50, 42, 21, 44,
-   38, 32, 29, 23, 17, 11,  4, 62,
-   46, 55, 26, 59, 40, 36, 15, 53,
-   34, 51, 20, 43, 31, 22, 10, 45,
-   25, 39, 14, 33, 19, 30,  9, 24,
-   13, 18,  8, 12,  7,  6,  5, 63
-};
-
-constexpr U64 debruijn64 = 0x03f79d71b4cb0a89;
-
-/**
- * bitScanForward
- * @author Kim Walisch (2012)
- * @param bb bitboard to scan
- * @precondition bb != 0
- * @return index (0..63) of least significant one bit
- */
-_ForceInline int bitScanForward(U64 bb) {
-   assert(bb != 0);
-   return index64[((bb ^ (bb-1)) * debruijn64) >> 58];
-}
+// /**
+//  * bitScanForward
+//  * @author Kim Walisch (2012)
+//  * @param bb bitboard to scan
+//  * @precondition bb != 0
+//  * @return index (0..63) of least significant one bit
+//  */
+// _ForceInline int bitScanForward(U64 bb) {
+//    assert(bb != 0);
+//    return index64[((bb ^ (bb-1)) * debruijn64) >> 58];
+// }
 
 _ForceInline U8 to_1_shift(uint64_t x) {
-    return x >> __builtin_ctzll(x);
+    return x >> bit_index(x);
 }

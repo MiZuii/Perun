@@ -51,6 +51,9 @@ std::ostream &operator<<(std::ostream &os, const BitBoardWrap &obj)
 
 #endif
 
+
+
+
 Board::Board() : Board(STARTING_POS) {}
 
 Board::Board(FEN_t fen)
@@ -121,15 +124,15 @@ Board::Board(FEN_t fen)
             /* side to move indicator */
             if (token == "w")
             {
-                _side_to_move = Side::white;
+                _side_to_move = Side::WHITE;
             }
             else if (token == "b")
             {
-                _side_to_move = Side::black;
+                _side_to_move = Side::BLACK;
             }
             else
             {
-                _side_to_move = Side::both;
+                _side_to_move = Side::BOTH;
             }
             break;
 
@@ -198,6 +201,11 @@ Board &Board::operator=(const Board &other)
     std::copy(other._occ_bitboards, other._occ_bitboards + 3, _occ_bitboards);
     
     return *this;
+}
+
+Board::Board(const Board &other)
+{
+    *this = other;
 }
 
 Piece Board::charToPiece(char pieceChar)
@@ -457,7 +465,7 @@ std::string Board::toString() const
         }
     }
     ret += '\n';
-    ret += (_side_to_move == Side::white) ? "Side to move: White\n" : "Side to move: Black\n";
+    ret += (_side_to_move == Side::WHITE) ? "Side to move: White\n" : "Side to move: Black\n";
     
     ret += "Castle rights: ";
 
@@ -513,7 +521,7 @@ std::wstring Board::toWString() const
         }
     }
     ret += L'\n';
-    ret += (_side_to_move == Side::white) ? L"Side to move: White\n" : L"Side to move: Black\n";
+    ret += (_side_to_move == Side::WHITE) ? L"Side to move: White\n" : L"Side to move: Black\n";
     ret += L"Castle rights: ";
 
     if(GET_BIT(_castle_rights, 3))
@@ -580,7 +588,7 @@ FEN_t Board::getFEN()
         ret += "/";
     }
 
-    if(_side_to_move == Side::white)
+    if(_side_to_move == Side::WHITE)
     {
         ret += " w ";
     }
