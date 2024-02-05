@@ -189,6 +189,12 @@ Board::Board(FEN_t fen)
     }
 }
 
+Board::Board(const Board &board, Move_t move)
+{
+    *this = board;
+    this->makeMove(move);
+}
+
 Board &Board::operator=(const Board &other)
 {
     _side_to_move = other._side_to_move;
@@ -206,6 +212,11 @@ Board &Board::operator=(const Board &other)
 Board::Board(const Board &other)
 {
     *this = other;
+}
+
+void Board::clearMoves()
+{
+    moves.clear();
 }
 
 Piece Board::charToPiece(char pieceChar)

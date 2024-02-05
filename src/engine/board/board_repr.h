@@ -62,7 +62,8 @@ private:
 
 
     template<bool WhiteMove, bool ENPoss, bool Kcastle, bool Qcastle, bool kcastle, bool qcastle>
-    std::vector<Move_t> _getMoves();
+    void _getMoves();
+
     template<bool WhiteMove>
     void _refresh();
     template<bool WhiteMove>
@@ -80,14 +81,16 @@ public:
     std::vector<Move_t> moves;
 
     Board();    // FEN_t of starting position is used to init
-    Board(FEN_t fen);
+    Board(const FEN_t fen);
+    Board(const Board &board, Move_t move);
     Board(const Board &board);
     Board(Board &&board) = delete;
     ~Board() = default;
 
     Board &operator=(const Board &);
 
-    std::vector<Move_t> getMoves(); // public template wrapper
+    void getMoves(); // public template wrapper
+    void clearMoves();
     Board& makeMove(Move_t move);
 
     _ForceInline U64 get_white_pawn_attack(int idx);

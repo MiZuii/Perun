@@ -8,14 +8,11 @@ void _perft(Board board, int depth, U32 &counter)
         return;
     }
 
-    Board next_board;
-    std::vector<Move_t> moves = board.getMoves();
+    board.getMoves();
 
-    for(Move_t move : moves)
+    for(Move_t move : board.moves)
     {
-        next_board = board;
-        next_board.makeMove(move);
-        _perft(next_board, depth-1, counter);
+        _perft({board, move}, depth-1, counter);
     }
 }
 
@@ -27,21 +24,19 @@ void perft(FEN_t fen, int depth)
     U32 sub_count = 0;
     int64_t time = 0;
     double speed = 0;
-    Board b(fen), bc;
+    Board b(fen);
 
     // start clock
     auto start = std::chrono::high_resolution_clock::now();
 
     // first generate all moves for depth 0
-    std::vector<Move_t> moves = b.getMoves();
+    b.getMoves();
 
 
-    for(Move_t move : moves)
+    for(Move_t move : b.moves)
     {
         sub_count = 0;
-        bc = b;
-        bc.makeMove(move);
-        _perft(bc, depth-1, sub_count);
+        _perft({b, move}, depth-1, sub_count);
         std::cout << Board::moveToStringShort(move) << " " << sub_count << std::endl;
         count += sub_count;
     }

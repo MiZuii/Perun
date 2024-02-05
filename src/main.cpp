@@ -22,7 +22,7 @@ int main(void) {
     // std::cout << b.toString();
     // std::wcout << b.toWString();
 
-    perft(STARTING_POS, 4);
+    perft(STARTING_POS, 6);
 
     // Board test1;
     // moves = test1.getMoves();

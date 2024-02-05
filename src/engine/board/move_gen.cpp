@@ -385,13 +385,10 @@ void Board::_refresh()
 /* -------------------------------------------------------------------------- */
 
 template<bool WhiteMove, bool ENPoss, bool Kcastle, bool Qcastle, bool kcastle, bool qcastle>
-std::vector<Move_t> Board::_getMoves()
+void Board::_getMoves()
 {
 
     _refresh<WhiteMove>();
-
-    std::vector<Move_t> moves;
-    moves.reserve(20);
     U64 sadsauqre_bb=0, movemask;
 
     //Divide into position with one or less checks and positions with more checks
@@ -699,8 +696,6 @@ std::vector<Move_t> Board::_getMoves()
             moves.push_back(createMove(king_idx, legal_move_idx, playerPiece<WhiteMove>(KING), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx), false, false, true, false, false));
         }
     }
-
-    return moves;
 }
 
 
@@ -709,77 +704,73 @@ std::vector<Move_t> Board::_getMoves()
 /*                       MOVE GENERATION TEMPLATE WRAPER                      */
 /* -------------------------------------------------------------------------- */
 
-std::vector<Move_t> Board::getMoves()
+void Board::getMoves()
 {
+    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 15) { _getMoves<true, false, true, true, true, true>();}
+    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 14) { _getMoves<true, false, true, true, true, false>();}
+    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 13) { _getMoves<true, false, true, true, false, true>();}
+    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 12) { _getMoves<true, false, true, true, false, false>();}
+    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 11) { _getMoves<true, false, true, false, true, true>();}
+    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 10) { _getMoves<true, false, true, false, true, false>();}
+    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 9) { _getMoves<true, false, true, false, false, true>();}
+    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 8) { _getMoves<true, false, true, false, false, false>();}
+    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 7) { _getMoves<true, false, false, true, true, true>();}
+    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 6) { _getMoves<true, false, false, true, true, false>();}
+    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 5) { _getMoves<true, false, false, true, false, true>();}
+    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 4) { _getMoves<true, false, false, true, false, false>();}
+    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 3) { _getMoves<true, false, false, false, true, true>();}
+    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 2) { _getMoves<true, false, false, false, true, false>();}
+    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 1) { _getMoves<true, false, false, false, false, true>();}
+    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 0) { _getMoves<true, false, false, false, false, false>();}
 
-    // consider changing it to multidimentional lookup array(if the array would work faster there are possibilities to increase the number of parameters)
+    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 15) { _getMoves<true, true, true, true, true, true>();}
+    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 14) { _getMoves<true, true, true, true, true, false>();}
+    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 13) { _getMoves<true, true, true, true, false, true>();}
+    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 12) { _getMoves<true, true, true, true, false, false>();}
+    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 11) { _getMoves<true, true, true, false, true, true>();}
+    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 10) { _getMoves<true, true, true, false, true, false>();}
+    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 9) { _getMoves<true, true, true, false, false, true>();}
+    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 8) { _getMoves<true, true, true, false, false, false>();}
+    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 7) { _getMoves<true, true, false, true, true, true>();}
+    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 6) { _getMoves<true, true, false, true, true, false>();}
+    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 5) { _getMoves<true, true, false, true, false, true>();}
+    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 4) { _getMoves<true, true, false, true, false, false>();}
+    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 3) { _getMoves<true, true, false, false, true, true>();}
+    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 2) { _getMoves<true, true, false, false, true, false>();}
+    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 1) { _getMoves<true, true, false, false, false, true>();}
+    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 0) { _getMoves<true, true, false, false, false, false>();}
 
-    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 15) {return _getMoves<true, false, true, true, true, true>();}
-    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 14) {return _getMoves<true, false, true, true, true, false>();}
-    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 13) {return _getMoves<true, false, true, true, false, true>();}
-    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 12) {return _getMoves<true, false, true, true, false, false>();}
-    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 11) {return _getMoves<true, false, true, false, true, true>();}
-    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 10) {return _getMoves<true, false, true, false, true, false>();}
-    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 9) {return _getMoves<true, false, true, false, false, true>();}
-    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 8) {return _getMoves<true, false, true, false, false, false>();}
-    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 7) {return _getMoves<true, false, false, true, true, true>();}
-    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 6) {return _getMoves<true, false, false, true, true, false>();}
-    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 5) {return _getMoves<true, false, false, true, false, true>();}
-    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 4) {return _getMoves<true, false, false, true, false, false>();}
-    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 3) {return _getMoves<true, false, false, false, true, true>();}
-    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 2) {return _getMoves<true, false, false, false, true, false>();}
-    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 1) {return _getMoves<true, false, false, false, false, true>();}
-    if(_side_to_move == Side::WHITE && _en_passant == NO_SQ && _castle_rights == 0) {return _getMoves<true, false, false, false, false, false>();}
+    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 15) { _getMoves<false, false, true, true, true, true>();}
+    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 14) { _getMoves<false, false, true, true, true, false>();}
+    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 13) { _getMoves<false, false, true, true, false, true>();}
+    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 12) { _getMoves<false, false, true, true, false, false>();}
+    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 11) { _getMoves<false, false, true, false, true, true>();}
+    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 10) { _getMoves<false, false, true, false, true, false>();}
+    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 9) { _getMoves<false, false, true, false, false, true>();}
+    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 8) { _getMoves<false, false, true, false, false, false>();}
+    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 7) { _getMoves<false, false, false, true, true, true>();}
+    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 6) { _getMoves<false, false, false, true, true, false>();}
+    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 5) { _getMoves<false, false, false, true, false, true>();}
+    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 4) { _getMoves<false, false, false, true, false, false>();}
+    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 3) { _getMoves<false, false, false, false, true, true>();}
+    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 2) { _getMoves<false, false, false, false, true, false>();}
+    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 1) { _getMoves<false, false, false, false, false, true>();}
+    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 0) { _getMoves<false, false, false, false, false, false>();}
 
-    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 15) {return _getMoves<true, true, true, true, true, true>();}
-    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 14) {return _getMoves<true, true, true, true, true, false>();}
-    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 13) {return _getMoves<true, true, true, true, false, true>();}
-    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 12) {return _getMoves<true, true, true, true, false, false>();}
-    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 11) {return _getMoves<true, true, true, false, true, true>();}
-    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 10) {return _getMoves<true, true, true, false, true, false>();}
-    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 9) {return _getMoves<true, true, true, false, false, true>();}
-    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 8) {return _getMoves<true, true, true, false, false, false>();}
-    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 7) {return _getMoves<true, true, false, true, true, true>();}
-    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 6) {return _getMoves<true, true, false, true, true, false>();}
-    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 5) {return _getMoves<true, true, false, true, false, true>();}
-    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 4) {return _getMoves<true, true, false, true, false, false>();}
-    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 3) {return _getMoves<true, true, false, false, true, true>();}
-    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 2) {return _getMoves<true, true, false, false, true, false>();}
-    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 1) {return _getMoves<true, true, false, false, false, true>();}
-    if(_side_to_move == Side::WHITE && _en_passant != NO_SQ && _castle_rights == 0) {return _getMoves<true, true, false, false, false, false>();}
-
-    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 15) {return _getMoves<false, false, true, true, true, true>();}
-    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 14) {return _getMoves<false, false, true, true, true, false>();}
-    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 13) {return _getMoves<false, false, true, true, false, true>();}
-    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 12) {return _getMoves<false, false, true, true, false, false>();}
-    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 11) {return _getMoves<false, false, true, false, true, true>();}
-    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 10) {return _getMoves<false, false, true, false, true, false>();}
-    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 9) {return _getMoves<false, false, true, false, false, true>();}
-    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 8) {return _getMoves<false, false, true, false, false, false>();}
-    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 7) {return _getMoves<false, false, false, true, true, true>();}
-    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 6) {return _getMoves<false, false, false, true, true, false>();}
-    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 5) {return _getMoves<false, false, false, true, false, true>();}
-    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 4) {return _getMoves<false, false, false, true, false, false>();}
-    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 3) {return _getMoves<false, false, false, false, true, true>();}
-    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 2) {return _getMoves<false, false, false, false, true, false>();}
-    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 1) {return _getMoves<false, false, false, false, false, true>();}
-    if(_side_to_move == Side::BLACK && _en_passant == NO_SQ && _castle_rights == 0) {return _getMoves<false, false, false, false, false, false>();}
-
-    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 15) {return _getMoves<false, true, true, true, true, true>();}
-    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 14) {return _getMoves<false, true, true, true, true, false>();}
-    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 13) {return _getMoves<false, true, true, true, false, true>();}
-    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 12) {return _getMoves<false, true, true, true, false, false>();}
-    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 11) {return _getMoves<false, true, true, false, true, true>();}
-    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 10) {return _getMoves<false, true, true, false, true, false>();}
-    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 9) {return _getMoves<false, true, true, false, false, true>();}
-    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 8) {return _getMoves<false, true, true, false, false, false>();}
-    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 7) {return _getMoves<false, true, false, true, true, true>();}
-    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 6) {return _getMoves<false, true, false, true, true, false>();}
-    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 5) {return _getMoves<false, true, false, true, false, true>();}
-    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 4) {return _getMoves<false, true, false, true, false, false>();}
-    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 3) {return _getMoves<false, true, false, false, true, true>();}
-    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 2) {return _getMoves<false, true, false, false, true, false>();}
-    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 1) {return _getMoves<false, true, false, false, false, true>();}
-    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 0) {return _getMoves<false, true, false, false, false, false>();}
-    return std::vector<Move_t>();
+    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 15) { _getMoves<false, true, true, true, true, true>();}
+    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 14) { _getMoves<false, true, true, true, true, false>();}
+    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 13) { _getMoves<false, true, true, true, false, true>();}
+    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 12) { _getMoves<false, true, true, true, false, false>();}
+    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 11) { _getMoves<false, true, true, false, true, true>();}
+    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 10) { _getMoves<false, true, true, false, true, false>();}
+    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 9) { _getMoves<false, true, true, false, false, true>();}
+    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 8) { _getMoves<false, true, true, false, false, false>();}
+    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 7) { _getMoves<false, true, false, true, true, true>();}
+    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 6) { _getMoves<false, true, false, true, true, false>();}
+    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 5) { _getMoves<false, true, false, true, false, true>();}
+    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 4) { _getMoves<false, true, false, true, false, false>();}
+    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 3) { _getMoves<false, true, false, false, true, true>();}
+    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 2) { _getMoves<false, true, false, false, true, false>();}
+    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 1) { _getMoves<false, true, false, false, false, true>();}
+    if(_side_to_move == Side::BLACK && _en_passant != NO_SQ && _castle_rights == 0) { _getMoves<false, true, false, false, false, false>();}
 }
