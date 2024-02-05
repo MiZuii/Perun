@@ -65,14 +65,20 @@ private:
     std::vector<Move_t> _getMoves();
     template<bool WhiteMove>
     void _refresh();
-
     template<bool WhiteMove>
-    bool _valid_en_passant();
+    _ForceInline void _register_rook_pins();
+    template<bool WhiteMove>
+    _ForceInline void _register_bishop_pins();
+    template<bool WhiteMove>
+    _ForceInline bool _valid_en_passant();
 
     // move making helper method
     _Inline void movePiece(Side playing_side, int source_square, int target_square, Piece source_piece);
 
 public:
+
+    std::vector<Move_t> moves;
+
     Board();    // FEN_t of starting position is used to init
     Board(FEN_t fen);
     Board(const Board &board);
@@ -91,6 +97,9 @@ public:
     _ForceInline U64 get_bishop_attack(int idx);
     _ForceInline U64 get_rook_attack(int idx);
     _ForceInline U64 get_queen_attack(int idx);
+    _ForceInline U64 get_bishop_attack_pin(int idx);
+    _ForceInline U64 get_rook_attack_pin(int idx);
+    _ForceInline U64 get_queen_attack_pin(int idx);
     _ForceInline U64 get_bishop_checkmask(int idx, int king_idx);
     _ForceInline U64 get_rook_checkmask(int idx, int king_idx);
 

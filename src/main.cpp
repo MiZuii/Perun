@@ -24,7 +24,7 @@ int main(void) {
 
     perft(STARTING_POS, 4);
 
-    // Board test1("r3k2r/p6p/8/8/8/8/P6P/R3K2R b KQkq - 0 1");
+    // Board test1;
     // moves = test1.getMoves();
     // std::cout << "test1 moves:" << std::endl;
     // for(auto move : moves)

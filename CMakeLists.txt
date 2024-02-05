@@ -4,7 +4,7 @@ message("-- Cmake config in: ${CMAKE_HOME_DIRECTORY}")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=x86-64-v3 -Wall -Wextra -pedantic -Wimplicit-fallthrough=0")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=x86-64-v3 -Wall -Wextra -pedantic")
 
 # compile debug definition
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")

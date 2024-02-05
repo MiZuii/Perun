@@ -272,6 +272,82 @@ U64 bishop_attack_otf(U64 occ, int sq)
     return att;
 }
 
+U64 pin_bishop_attack_otf(U64 occ, int sq)
+{
+    U64 att = 0;
+    int rank = sq / 8, file = sq % 8, r, f;
+    bool skip_flag = false;
+
+    for (r = rank + 1, f = file + 1; r < 8 && f < 8; r++, f++)
+    {
+        SET_BIT(att, r * 8 + f);
+        if (GET_BIT(occ, r * 8 + f))
+        {
+            if(skip_flag)
+            {
+                break;
+            }
+            else
+            {
+                skip_flag = true;
+            }
+        }
+    }
+    skip_flag = false;
+
+    for (r = rank + 1, f = file - 1; r < 8 && f >= 0; r++, f--)
+    {
+        SET_BIT(att, r * 8 + f);
+        if (GET_BIT(occ, r * 8 + f))
+        {
+            if(skip_flag)
+            {
+                break;
+            }
+            else
+            {
+                skip_flag = true;
+            }
+        }
+    }
+    skip_flag = false;
+
+    for (r = rank - 1, f = file + 1; r >= 0 && f < 8; r--, f++)
+    {
+        SET_BIT(att, r * 8 + f);
+        if (GET_BIT(occ, r * 8 + f))
+        {
+            if(skip_flag)
+            {
+                break;
+            }
+            else
+            {
+                skip_flag = true;
+            }
+        }
+    }
+    skip_flag = false;
+
+    for (r = rank - 1, f = file - 1; r >= 0 && f >= 0; r--, f--)
+    {
+        SET_BIT(att, r * 8 + f);
+        if (GET_BIT(occ, r * 8 + f))
+        {
+            if(skip_flag)
+            {
+                break;
+            }
+            else
+            {
+                skip_flag = true;
+            }
+        }
+    }
+
+    return att;
+}
+
 U64 rook_attack_otf(U64 occ, int sq)
 {
     U64 att = 0;
@@ -310,6 +386,82 @@ U64 rook_attack_otf(U64 occ, int sq)
         if (GET_BIT(occ, r * 8 + f))
         {
             break;
+        }
+    }
+
+    return att;
+}
+
+U64 pin_rook_attack_otf(U64 occ, int sq)
+{
+    U64 att = 0;
+    int rank = sq / 8, file = sq % 8, r, f;
+    bool skip_flag = false;
+
+    for (r = rank + 1, f = file; r < 8; r++)
+    {
+        SET_BIT(att, r * 8 + f);
+        if (GET_BIT(occ, r * 8 + f))
+        {
+            if(skip_flag)
+            {
+                break;
+            }
+            else
+            {
+                skip_flag = true;
+            }
+        }
+    }
+    skip_flag = false;
+
+    for (r = rank, f = file + 1; f < 8; f++)
+    {
+        SET_BIT(att, r * 8 + f);
+        if (GET_BIT(occ, r * 8 + f))
+        {
+            if(skip_flag)
+            {
+                break;
+            }
+            else
+            {
+                skip_flag = true;
+            }
+        }
+    }
+    skip_flag = false;
+
+    for (r = rank - 1, f = file; r >= 0; r--)
+    {
+        SET_BIT(att, r * 8 + f);
+        if (GET_BIT(occ, r * 8 + f))
+        {
+            if(skip_flag)
+            {
+                break;
+            }
+            else
+            {
+                skip_flag = true;
+            }
+        }
+    }
+    skip_flag = false;
+
+    for (r = rank, f = file - 1; f >= 0; f--)
+    {
+        SET_BIT(att, r * 8 + f);
+        if (GET_BIT(occ, r * 8 + f))
+        {
+            if(skip_flag)
+            {
+                break;
+            }
+            else
+            {
+                skip_flag = true;
+            }
         }
     }
 
@@ -364,7 +516,7 @@ U64 random_U64_little()
     return random_U64() & random_U64() & random_U64();
 }
 
-U64 find_bishop_magic(U64 (&attack)[SIZE][BISHOP_ATTACK_SIZE], U64 (&magic)[SIZE], U64 (&mask)[SIZE], int sq, U8 relevant_bits)
+U64 find_bishop_magic(U64 (&attack)[SIZE][BISHOP_ATTACK_SIZE], U64 (&magic)[SIZE], U64 (&mask)[SIZE], int sq, U8 relevant_bits, U64 (&on_the_fly_function)(U64, int))
 {
 
     // variables preparation
@@ -381,7 +533,7 @@ U64 find_bishop_magic(U64 (&attack)[SIZE][BISHOP_ATTACK_SIZE], U64 (&magic)[SIZE
         occupancies[count] = set_occupancy(count, relevant_bits, mask_attack);
 
         // init attacks
-        attacks[count] = bishop_attack_otf(occupancies[count], sq);
+        attacks[count] = on_the_fly_function(occupancies[count], sq);
     }
 
     // ** magic **
@@ -437,7 +589,7 @@ U64 find_bishop_magic(U64 (&attack)[SIZE][BISHOP_ATTACK_SIZE], U64 (&magic)[SIZE
     return 0ULL;
 }
 
-U64 find_rook_magic(U64 (&attack)[SIZE][ROOK_ATTACK_SIZE], U64 (&magic)[SIZE], U64 (&mask)[SIZE], int sq, U8 relevant_bits)
+U64 find_rook_magic(U64 (&attack)[SIZE][ROOK_ATTACK_SIZE], U64 (&magic)[SIZE], U64 (&mask)[SIZE], int sq, U8 relevant_bits, U64 (&on_the_fly_function)(U64, int))
 {
 
     // variables preparation
@@ -454,7 +606,7 @@ U64 find_rook_magic(U64 (&attack)[SIZE][ROOK_ATTACK_SIZE], U64 (&magic)[SIZE], U
         occupancies[count] = set_occupancy(count, relevant_bits, mask_attack);
 
         // init attacks
-        attacks[count] = rook_attack_otf(occupancies[count], sq);
+        attacks[count] = on_the_fly_function(occupancies[count], sq);
     }
 
     // ** magic **
@@ -594,7 +746,7 @@ void generate_bishop_attack(U64 (&attack)[SIZE][BISHOP_ATTACK_SIZE], U8 (&releva
 
     // loop over 64 board squares
     for (int square = 0; square < 64; square++)
-        printf("    0x%lxUL,\n", find_bishop_magic(attack, magic, mask, square, relevant_bits[square]));
+        printf("    0x%lxUL,\n", find_bishop_magic(attack, magic, mask, square, relevant_bits[square], bishop_attack_otf));
 
     printf("};\n\n");
 
@@ -617,13 +769,59 @@ void generate_rook_attack(U64 (&attack)[SIZE][ROOK_ATTACK_SIZE], U8 (&relevant_b
 
     // loop over 64 board squares
     for (int square = 0; square < 64; square++)
-        printf("    0x%lxUL,\n", find_rook_magic(attack, magic, mask, square, relevant_bits[square]));
+        printf("    0x%lxUL,\n", find_rook_magic(attack, magic, mask, square, relevant_bits[square], rook_attack_otf));
 
     printf("};\n\n");
 
     // print_array_64(mask, "rook_mask");
     // print_array_8(relevant_bits, "rook_relevant_bits");
     // save_attack_rook(attack, "attack_tables_data_rook.h");
+}
+
+void generate_bishop_pin_attack(U64 (&attack)[SIZE][BISHOP_ATTACK_SIZE], U8 (&relevant_bits)[SIZE], U64 (&mask)[SIZE], U64 (&magic)[SIZE])
+{
+
+    // fill relevant_bits and mask arrays
+    for (U8 sq = 0; sq < 64; sq++)
+    {
+        mask[sq] = make_bishop_mask(sq);
+        relevant_bits[sq] = count_bits(mask[sq]);
+    }
+
+    printf("\n\nconstexpr U64 bishop_magic_pin[SIZE] = {\n");
+
+    // loop over 64 board squares
+    for (int square = 0; square < 64; square++)
+        printf("    0x%lxUL,\n", find_bishop_magic(attack, magic, mask, square, relevant_bits[square], pin_bishop_attack_otf));
+
+    printf("};\n\n");
+
+    // print_array_64(mask, "bishop_mask");
+    // print_array_8(relevant_bits, "bishop_relevant_bits");
+    save_attack_bishop(attack, "attack_tables_data_bishop_pin.h");
+}
+
+void generate_rook_pin_attack(U64 (&attack)[SIZE][ROOK_ATTACK_SIZE], U8 (&relevant_bits)[SIZE], U64 (&mask)[SIZE], U64 (&magic)[SIZE])
+{
+
+    // fill relevant_bits and mask arrays
+    for (U8 sq = 0; sq < 64; sq++)
+    {
+        mask[sq] = make_rook_mask(sq);
+        relevant_bits[sq] = count_bits(mask[sq]);
+    }
+
+    printf("\n\nconstexpr U64 rook_magic_pin[SIZE] = {\n");
+
+    // loop over 64 board squares
+    for (int square = 0; square < 64; square++)
+        printf("    0x%lxUL,\n", find_rook_magic(attack, magic, mask, square, relevant_bits[square], pin_rook_attack_otf));
+
+    printf("};\n\n");
+
+    // print_array_64(mask, "rook_mask");
+    // print_array_8(relevant_bits, "rook_relevant_bits");
+    save_attack_rook(attack, "attack_tables_data_rook_pin.h");
 }
 
 /* -------------------------------------------------------------------------- */

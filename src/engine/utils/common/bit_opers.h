@@ -102,7 +102,3 @@ constexpr uint64_t rows_get[8] = {ROW_1, ROW_2, ROW_3, ROW_4, ROW_5, ROW_6, ROW_
 //    assert(bb != 0);
 //    return index64[((bb ^ (bb-1)) * debruijn64) >> 58];
 // }
-
-_ForceInline U8 to_1_shift(uint64_t x) {
-    return x >> bit_index(x);
-}

@@ -1,11 +1,6 @@
 #include "board_repr.h"
 #include "../utils/attack_tables/attack_tables.h"
 
-/*
-POSSIBLE OPTIMISATIONS FOR LATER:
- + Pawn move pushing (it do be ineficient) and rook pinned pawns cannot promote but
-   in this version they can.
-*/
 
 _ForceInline U64 Board::get_white_pawn_attack(int idx)
 {
@@ -37,6 +32,16 @@ _ForceInline U64 Board::get_rook_attack(int idx)
     return _get_rook_attack(_occ_bitboards[BOTH], idx);
 }
 
+_ForceInline U64 Board::get_bishop_attack_pin(int idx)
+{
+    return _get_bishop_attack_pin(_occ_bitboards[BOTH], idx);
+}
+
+_ForceInline U64 Board::get_rook_attack_pin(int idx)
+{
+    return _get_rook_attack_pin(_occ_bitboards[BOTH], idx);
+}
+
 _ForceInline U64 Board::get_bishop_checkmask(int idx, int king_idx)
 {
     return bishop_checkmask[king_idx][idx];
@@ -53,12 +58,18 @@ _ForceInline U64 Board::get_queen_attack(int idx)
            _get_rook_attack(_occ_bitboards[BOTH], idx);
 }
 
+_ForceInline U64 Board::get_queen_attack_pin(int idx)
+{
+    return _get_bishop_attack_pin(_occ_bitboards[BOTH], idx) |
+           _get_rook_attack_pin(_occ_bitboards[BOTH], idx);
+}
+
 /* -------------------------------------------------------------------------- */
 /*                        CONSTEXPR APPLYING FUNCTIONS                        */
 /* -------------------------------------------------------------------------- */
 
 template<bool WhiteMove>
-constexpr Side playerSide()
+_ForceInline constexpr Side playerSide()
 {
     if constexpr(WhiteMove)
     {
@@ -71,7 +82,7 @@ constexpr Side playerSide()
 }
 
 template<bool WhiteMove>
-constexpr Side enemySide()
+_ForceInline constexpr Side enemySide()
 {
     if constexpr(WhiteMove)
     {
@@ -84,17 +95,17 @@ constexpr Side enemySide()
 }
 
 template<bool WhiteMove>
-constexpr Piece playerPiece(PieceType piece_type) {
+_ForceInline constexpr Piece playerPiece(PieceType piece_type) {
     return convertPiece(piece_type, playerSide<WhiteMove>());
 }
 
 template<bool WhiteMove>
-constexpr Piece enemyPiece(PieceType piece_type) {
+_ForceInline constexpr Piece enemyPiece(PieceType piece_type) {
     return convertPiece(piece_type, enemySide<WhiteMove>());
 }
 
 template<bool WhiteMove>
-constexpr U64 kingsideCastleMask()
+_ForceInline constexpr U64 kingsideCastleMask()
 {
     if constexpr (WhiteMove)
     {
@@ -109,7 +120,7 @@ constexpr U64 kingsideCastleMask()
 }
 
 template<bool WhiteMove>
-constexpr U64 queensideCastleMask()
+_ForceInline constexpr U64 queensideCastleMask()
 {
     if constexpr (WhiteMove)
     {
@@ -122,7 +133,7 @@ constexpr U64 queensideCastleMask()
 }
 
 template<bool WhiteMove>
-constexpr int kingsideCastleTarget()
+_ForceInline constexpr int kingsideCastleTarget()
 {
     if constexpr (WhiteMove)
     {
@@ -135,7 +146,7 @@ constexpr int kingsideCastleTarget()
 }
 
 template<bool WhiteMove>
-constexpr int queensideCastleTarget()
+_ForceInline constexpr int queensideCastleTarget()
 {
     if constexpr (WhiteMove)
     {
@@ -226,6 +237,36 @@ _Inline void pushPawnMoves(std::vector<Move_t> &moves, int src_idx, int trg_idx,
 /* -------------------------------------------------------------------------- */
 /*                                BOARD REFRESH                               */
 /* -------------------------------------------------------------------------- */
+
+template<bool WhiteMove>
+void Board::_register_rook_pins()
+{
+    U64 pinners = get_rook_attack_pin(king_idx) & (_piece_bitboards[enemyPiece<WhiteMove>(ROOK)] | _piece_bitboards[enemyPiece<WhiteMove>(QUEEN)]); // xraymask here -> bitscan works as an if
+    bitScan(pinners)
+    {
+        int pinner_idx = bit_index(pinners);
+        U64 pinmask = get_rook_checkmask(pinner_idx, king_idx);
+        if(pinmask & _occ_bitboards[playerSide<WhiteMove>()])
+        {
+            _rook_pins |= pinmask;
+        }
+    }
+}
+
+template<bool WhiteMove>
+void Board::_register_bishop_pins()
+{
+    U64 pinners = get_bishop_attack_pin(king_idx) & (_piece_bitboards[enemyPiece<WhiteMove>(BISHOP)] | _piece_bitboards[enemyPiece<WhiteMove>(QUEEN)]); // xraymask here
+    bitScan(pinners)
+    {
+        int pinner_idx = bit_index(pinners);
+        U64 pinmask = get_bishop_checkmask(pinner_idx, king_idx);
+        if(pinmask & _occ_bitboards[playerSide<WhiteMove>()])
+        {
+            _bishop_pins |= pinmask;
+        }
+    }
+}
 
 template<bool WhiteMove>
 void Board::_refresh()
@@ -331,9 +372,10 @@ void Board::_refresh()
             }
         }
 
-        // create pinmask
+        // create pinmasks
         {
-            
+            _register_rook_pins<WhiteMove>();
+            _register_bishop_pins<WhiteMove>();
         }
     }
 }
@@ -347,10 +389,9 @@ std::vector<Move_t> Board::_getMoves()
 {
 
     _refresh<WhiteMove>();
-    std::vector<Move_t> moves(20);
 
-    // to remove
-    int idx, idx2;
+    std::vector<Move_t> moves;
+    moves.reserve(20);
     U64 sadsauqre_bb=0, movemask;
 
     //Divide into position with one or less checks and positions with more checks
@@ -359,7 +400,7 @@ std::vector<Move_t> Board::_getMoves()
     case 0:
         sadsauqre_bb = ~_get_sadsquare(king_idx, _checkmask);
         _checkmask = UINT64_MAX;
-        // break is ommited here not by accident
+        [[fallthrough]];
 
     case 1:
         movemask = ~(_occ_bitboards[playerSide<WhiteMove>()]) & _checkmask;
@@ -371,13 +412,13 @@ std::vector<Move_t> Board::_getMoves()
             U64 player_knights = _piece_bitboards[playerPiece<WhiteMove>(KNIGHT)] & ~(_rook_pins | _bishop_pins); // prefilter pinned knights
             bitScan(player_knights)
             {
-                idx = bit_index(player_knights);
+                int knight_idx = bit_index(player_knights);
 
-                U64 legal_knight_moves = get_knight_attack(idx) & movemask;
+                U64 legal_knight_moves = get_knight_attack(knight_idx) & movemask;
                 bitScan(legal_knight_moves)
                 {
-                    idx2 = bit_index(legal_knight_moves);
-                    moves.push_back(createMove(idx, idx2, playerPiece<WhiteMove>(KNIGHT), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, false, false));
+                    int legal_move_idx = bit_index(legal_knight_moves);
+                    moves.push_back(createMove(knight_idx, legal_move_idx, playerPiece<WhiteMove>(KNIGHT), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx), false, false, false, false, false));
                 }
             }
         }
@@ -392,13 +433,13 @@ std::vector<Move_t> Board::_getMoves()
                 U64 pinned_bishops = (player_bishops | _piece_bitboards[playerPiece<WhiteMove>(QUEEN)]) & _bishop_pins;   // diagonaly pinned queens are an addition here
                 bitScan(pinned_bishops)
                 {
-                    idx = bit_index(pinned_bishops);
-                    U64 legal_bishop_moves = get_bishop_attack(idx) & _bishop_pins & movemask;
+                    int bishop_idx = bit_index(pinned_bishops);
+                    U64 legal_bishop_moves = get_bishop_attack(bishop_idx) & _bishop_pins & movemask;
 
                     bitScan(legal_bishop_moves)
                     {
-                        idx2 = bit_index(legal_bishop_moves);
-                        moves.push_back(createMove(idx, idx2, playerPiece<WhiteMove>(BISHOP), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, false, false));
+                        int legal_move_idx = bit_index(legal_bishop_moves);
+                        moves.push_back(createMove(bishop_idx, legal_move_idx, playerPiece<WhiteMove>(BISHOP), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx), false, false, false, false, false));
                     }
                 }
             }
@@ -408,13 +449,13 @@ std::vector<Move_t> Board::_getMoves()
                 U64 not_pinned_bishops = player_bishops & ~_bishop_pins;
                 bitScan(not_pinned_bishops)
                 {
-                    idx = bit_index(not_pinned_bishops);
-                    U64 legal_bishop_moves = get_bishop_attack(idx) & movemask;
+                    int bishop_idx = bit_index(not_pinned_bishops);
+                    U64 legal_bishop_moves = get_bishop_attack(bishop_idx) & movemask;
 
                     bitScan(legal_bishop_moves)
                     {
-                        idx2 = bit_index(legal_bishop_moves);
-                        moves.push_back(createMove(idx, idx2, playerPiece<WhiteMove>(BISHOP), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, false, false));
+                        int legal_move_idx = bit_index(legal_bishop_moves);
+                        moves.push_back(createMove(bishop_idx, legal_move_idx, playerPiece<WhiteMove>(BISHOP), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx), false, false, false, false, false));
                     }
                 }
             }
@@ -430,13 +471,13 @@ std::vector<Move_t> Board::_getMoves()
                 U64 pinned_rooks = (player_rooks | _piece_bitboards[playerPiece<WhiteMove>(QUEEN)]) & _rook_pins;
                 bitScan(pinned_rooks)
                 {
-                    idx = bit_index(pinned_rooks);
-                    U64 legal_rook_moves = get_rook_attack(idx) & _rook_pins & movemask;
+                    int rook_idx = bit_index(pinned_rooks);
+                    U64 legal_rook_moves = get_rook_attack(rook_idx) & _rook_pins & movemask;
 
                     bitScan(legal_rook_moves)
                     {
-                        idx2 = bit_index(legal_rook_moves);
-                        moves.push_back(createMove(idx, idx2, playerPiece<WhiteMove>(ROOK), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, true, false));
+                        int legal_move_idx = bit_index(legal_rook_moves);
+                        moves.push_back(createMove(rook_idx, legal_move_idx, playerPiece<WhiteMove>(ROOK), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx), false, false, false, true, false));
                     }
                 }
             }
@@ -446,13 +487,13 @@ std::vector<Move_t> Board::_getMoves()
                 U64 not_pinned_rooks = player_rooks & ~_rook_pins;
                 bitScan(not_pinned_rooks)
                 {
-                    idx = bit_index(not_pinned_rooks);
-                    U64 legal_rook_moves = get_rook_attack(idx) & movemask;
+                    int rook_idx = bit_index(not_pinned_rooks);
+                    U64 legal_rook_moves = get_rook_attack(rook_idx) & movemask;
 
                     bitScan(legal_rook_moves)
                     {
-                        idx2 = bit_index(legal_rook_moves);
-                        moves.push_back(createMove(idx, idx2, playerPiece<WhiteMove>(ROOK), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, true, false));
+                        int legal_move_idx = bit_index(legal_rook_moves);
+                        moves.push_back(createMove(rook_idx, legal_move_idx, playerPiece<WhiteMove>(ROOK), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx), false, false, false, true, false));
                     }
                 }
             }
@@ -463,13 +504,13 @@ std::vector<Move_t> Board::_getMoves()
             U64 player_queen = _piece_bitboards[playerPiece<WhiteMove>(QUEEN)] & ~(_bishop_pins | _rook_pins); // only not pinned queens are evaluated here
             bitScan(player_queen)
             {
-                idx = bit_index(player_queen);
-                U64 current_queen_attack = get_queen_attack(idx) & movemask;
+                int queen_idx = bit_index(player_queen);
+                U64 current_queen_attack = get_queen_attack(queen_idx) & movemask;
 
                 bitScan(current_queen_attack)
                 {
-                    idx2 = bit_index(current_queen_attack);
-                    moves.push_back(createMove(idx, idx2, playerPiece<WhiteMove>(QUEEN), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, false, false, false));
+                    int legal_move_idx = bit_index(current_queen_attack);
+                    moves.push_back(createMove(queen_idx, legal_move_idx, playerPiece<WhiteMove>(QUEEN), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx), false, false, false, false, false));
                 }
             }
         }
@@ -497,13 +538,13 @@ std::vector<Move_t> Board::_getMoves()
                 U64 current_pawns = player_pawns & _rook_pins;
                 bitScan(current_pawns)
                 {
-                    idx = bit_index(current_pawns);
-                    U64 legal_pawn_moves = forward_pawn_moves & cols_get[idx % 8] & _rook_pins;
+                    int pawn_idx = bit_index(current_pawns);
+                    U64 legal_pawn_moves = forward_pawn_moves & cols_get[pawn_idx % 8] & _rook_pins;
 
                     bitScan(legal_pawn_moves)
                     {
-                        idx2 = bit_index(legal_pawn_moves);
-                        pushPawnMoves<WhiteMove>(moves, idx, idx2, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2));
+                        int legal_move_idx = bit_index(legal_pawn_moves);
+                        pushPawnMoves<WhiteMove>(moves, pawn_idx, legal_move_idx, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx));
                     }
                 }
             }
@@ -512,22 +553,22 @@ std::vector<Move_t> Board::_getMoves()
                 U64 current_pawns = player_pawns & _bishop_pins;
                 bitScan(current_pawns)
                 {
-                    idx = bit_index(current_pawns);
+                    int pawn_idx = bit_index(current_pawns);
 
                     U64 legal_pawn_moves;
                     if constexpr (WhiteMove)
                     {
-                        legal_pawn_moves = get_white_pawn_attack(idx) & _occ_bitboards[enemySide<WhiteMove>()] & _bishop_pins & _checkmask;
+                        legal_pawn_moves = get_white_pawn_attack(pawn_idx) & _occ_bitboards[enemySide<WhiteMove>()] & _bishop_pins & _checkmask;
                     }
                     else
                     {
-                        legal_pawn_moves = get_black_pawn_attack(idx) & _occ_bitboards[enemySide<WhiteMove>()] & _bishop_pins & _checkmask;
+                        legal_pawn_moves = get_black_pawn_attack(pawn_idx) & _occ_bitboards[enemySide<WhiteMove>()] & _bishop_pins & _checkmask;
                     }
 
                     bitScan(legal_pawn_moves)
                     {
-                        idx2 = bit_index(legal_pawn_moves);
-                        pushPawnMoves<WhiteMove>(moves, idx, idx2, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2));
+                        int legal_move_idx = bit_index(legal_pawn_moves);
+                        pushPawnMoves<WhiteMove>(moves, pawn_idx, legal_move_idx, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx));
                     }
                 }
             }
@@ -536,23 +577,23 @@ std::vector<Move_t> Board::_getMoves()
                 U64 current_pawns = player_pawns & ~(_rook_pins | _bishop_pins);
                 bitScan(current_pawns)
                 {
-                    idx = bit_index(current_pawns);
+                    int pawn_idx = bit_index(current_pawns);
 
                     U64 legal_pawn_moves;
                     if constexpr (WhiteMove)
                     {
-                        legal_pawn_moves = get_white_pawn_attack(idx) & _occ_bitboards[enemySide<WhiteMove>()] & _checkmask;
+                        legal_pawn_moves = get_white_pawn_attack(pawn_idx) & _occ_bitboards[enemySide<WhiteMove>()] & _checkmask;
                     }
                     else
                     {
-                        legal_pawn_moves = get_black_pawn_attack(idx) & _occ_bitboards[enemySide<WhiteMove>()] & _checkmask;
+                        legal_pawn_moves = get_black_pawn_attack(pawn_idx) & _occ_bitboards[enemySide<WhiteMove>()] & _checkmask;
                     }
 
-                    legal_pawn_moves |= forward_pawn_moves & cols_get[idx % 8];
+                    legal_pawn_moves |= forward_pawn_moves & cols_get[pawn_idx % 8];
                     bitScan(legal_pawn_moves)
                     {
-                        idx2 = bit_index(legal_pawn_moves);
-                        pushPawnMoves<WhiteMove>(moves, idx, idx2, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2));
+                        int legal_move_idx = bit_index(legal_pawn_moves);
+                        pushPawnMoves<WhiteMove>(moves, pawn_idx, legal_move_idx, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx));
                     }
                 }
             }
@@ -582,10 +623,10 @@ std::vector<Move_t> Board::_getMoves()
                     
                     bitScan(en_passant_source)
                     {
-                        idx = bit_index(en_passant_source);
+                        int ep_idx = bit_index(en_passant_source);
 
                         // make move
-                        CLEAR_BIT(_occ_bitboards[Side::BOTH], idx); // clear pawn from previous
+                        CLEAR_BIT(_occ_bitboards[Side::BOTH], ep_idx); // clear pawn from previous
                         SET_BIT(_occ_bitboards[Side::BOTH], _en_passant); // set pawn on the en passant square
                         if constexpr(WhiteMove)
                         {
@@ -598,11 +639,11 @@ std::vector<Move_t> Board::_getMoves()
 
                         if(_valid_en_passant<WhiteMove>())
                         {
-                            moves.push_back(createMove(idx, _en_passant, playerPiece<WhiteMove>(PAWN), no_piece, true, false, true, false, false, true));
+                            moves.push_back(createMove(ep_idx, _en_passant, playerPiece<WhiteMove>(PAWN), no_piece, true, false, true, false, false, true));
                         }
 
                         // unmake move
-                        SET_BIT(_occ_bitboards[Side::BOTH], idx);
+                        SET_BIT(_occ_bitboards[Side::BOTH], ep_idx);
                         if constexpr(WhiteMove)
                         {
                             SET_BIT(_occ_bitboards[Side::BOTH], _en_passant+8);
@@ -624,8 +665,8 @@ std::vector<Move_t> Board::_getMoves()
 
             bitScan(player_king)
             {
-                idx2 = bit_index(player_king);
-                moves.push_back(createMove(king_idx, idx2, playerPiece<WhiteMove>(KING), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, true, false, false));
+                int legal_move_idx = bit_index(player_king);
+                moves.push_back(createMove(king_idx, legal_move_idx, playerPiece<WhiteMove>(KING), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx), false, false, true, false, false));
             }
 
             if constexpr ((WhiteMove && Kcastle) || (!WhiteMove && kcastle))
@@ -654,8 +695,8 @@ std::vector<Move_t> Board::_getMoves()
 
         bitScan(player_king)
         {
-            idx2 = bit_index(player_king);
-            moves.push_back(createMove(king_idx, idx2, playerPiece<WhiteMove>(KING), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], idx2), false, false, true, false, false));
+            int legal_move_idx = bit_index(player_king);
+            moves.push_back(createMove(king_idx, legal_move_idx, playerPiece<WhiteMove>(KING), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx), false, false, true, false, false));
         }
     }
 
