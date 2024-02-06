@@ -11,6 +11,8 @@ typedef uint32_t U32;
 typedef uint16_t U16;
 typedef uint8_t U8;
 
+typedef int32_t ScoreVal_t;
+
 /* --------------------------- PIECE TYPES DEFINES -------------------------- */
 
 enum Side {
