@@ -209,11 +209,6 @@ Board &Board::operator=(const Board &other)
     return *this;
 }
 
-Board::Board(const Board &other)
-{
-    *this = other;
-}
-
 void Board::clearMoves()
 {
     moves.clear();

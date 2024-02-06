@@ -45,13 +45,6 @@ private:
     U64 _piece_bitboards[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     U64 _occ_bitboards[3] = {0, 0, 0};
 
-    /*Castle rights explanation
-    1000 - white King side castle
-    0100 - white Queen side castle
-    0010 - black King side castle
-    0001 - black Queen side castle
-    */
-
     Side _side_to_move=Side::WHITE;
     int _castle_rights=0, _en_passant=NO_SQ;
     int _halfmove_clock=0, _fullmove_clock=0;
@@ -60,9 +53,12 @@ private:
     U64 _enemy_attack_bb=0, _checkers=0, _rook_pins=0, _bishop_pins=0, _checkmask=0;
     int king_idx;
 
-
     template<bool WhiteMove, bool ENPoss, bool Kcastle, bool Qcastle, bool kcastle, bool qcastle>
     void _getMoves();
+
+    /* -------------------------------------------------------------------------- */
+    /*                       MOVE GENERATION HELP FUNCTIONS                       */
+    /* -------------------------------------------------------------------------- */
 
     template<bool WhiteMove>
     void _refresh();
@@ -72,26 +68,6 @@ private:
     _ForceInline void _register_bishop_pins();
     template<bool WhiteMove>
     _ForceInline bool _valid_en_passant();
-
-    // move making helper method
-    _Inline void movePiece(Side playing_side, int source_square, int target_square, Piece source_piece);
-
-public:
-
-    std::vector<Move_t> moves;
-
-    Board();    // FEN_t of starting position is used to init
-    Board(const FEN_t fen);
-    Board(const Board &board, Move_t move);
-    Board(const Board &board);
-    Board(Board &&board) = delete;
-    ~Board() = default;
-
-    Board &operator=(const Board &);
-
-    void getMoves(); // public template wrapper
-    void clearMoves();
-    Board& makeMove(Move_t move);
 
     _ForceInline U64 get_white_pawn_attack(int idx);
     _ForceInline U64 get_black_pawn_attack(int idx);
@@ -106,6 +82,35 @@ public:
     _ForceInline U64 get_bishop_checkmask(int idx, int king_idx);
     _ForceInline U64 get_rook_checkmask(int idx, int king_idx);
 
+    /* -------------------------------------------------------------------------- */
+    /*                         MOVE MAKING HELP FUNCTIONS                         */
+    /* -------------------------------------------------------------------------- */
+
+    _Inline void movePiece(Side playing_side, int source_square, int target_square, Piece source_piece);
+
+public:
+
+    std::vector<Move_t> moves;
+
+    Board();    // FEN_t of starting position is used to init
+    Board(const FEN_t fen);
+    Board(const Board &board, Move_t move);
+    Board(const Board &board) = delete;
+    Board(Board &&board) = delete;
+    ~Board() = default;
+
+    Board &operator=(const Board &);
+
+    void getMoves(); // public template wrapper
+    void clearMoves();
+    Board& makeMove(Move_t move);
+
+    static bool validFEN(FEN_t fen);
+
+    std::string toString() const;
+    std::wstring toWString() const;
+    
+    FEN_t getFEN();
     static Piece charToPiece(char pieceChar);
     static char PieceToChar(Piece piece);
     static wchar_t PieceToWChar(Piece piece);
@@ -114,10 +119,4 @@ public:
     static char intToRank(U8 square);
     static std::string moveToString(Move_t move);
     static std::string moveToStringShort(Move_t move);
-
-    static bool validFEN(FEN_t fen);
-
-    std::string toString() const;
-    std::wstring toWString() const;
-    FEN_t getFEN();
 };
