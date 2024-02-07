@@ -13,6 +13,8 @@ typedef uint8_t U8;
 
 typedef int32_t ScoreVal_t;
 
+typedef std::string FEN_t;
+
 /* --------------------------- PIECE TYPES DEFINES -------------------------- */
 
 enum Side {
@@ -23,14 +25,7 @@ enum Side {
 
 constexpr Side opositeSide(Side side)
 {
-    if (side == Side::WHITE)
-    {
-        return Side::BLACK;
-    }
-    else 
-    {
-        return Side::WHITE;
-    }
+    return side == Side::WHITE ? Side::BLACK : Side::WHITE;
 }
 
 enum PieceType {
@@ -40,6 +35,7 @@ enum PieceType {
     KNIGHT,
     ROOK,
     PAWN,
+
     NONE
 };
 
@@ -57,6 +53,7 @@ enum Piece {
     n,
     r,
     p,
+    
     no_piece
 };
 
@@ -91,7 +88,7 @@ constexpr Piece convertPiece(PieceType pt, Side sd)
 
 constexpr Piece getColoredQueen(Side side)
 {
-    if(side == Side::WHITE)
+    if (side == Side::WHITE)
     {
         return Q;
     }
@@ -236,104 +233,59 @@ _ForceInline Move_t createMove(int source_square,
            (promoted_piece << PRP_SHIFT) | (target_square << TRG_SHIFT) | (source_square);
 }
 
-
-
-typedef std::string FEN_t;
-
 /* ----------------------------- SQUARE DEFINES ----------------------------- */
 
-#define _A 7
-#define _B 6
-#define _C 5
-#define _D 4
-#define _E 3
-#define _F 2
-#define _G 1
-#define _H 0
+enum Field
+{
+    _H,
+    _G,
+    _F,
+    _E,
+    _D,
+    _C,
+    _B,
+    _A
+};
 
-#define _1 0
-#define _2 1
-#define _3 2
-#define _4 3
-#define _5 4
-#define _6 5
-#define _7 6
-#define _8 7
+enum Rank
+{
+    _1,
+    _2,
+    _3,
+    _4,
+    _5,
+    _6,
+    _7,
+    _8
+};
 
-#define A1 7
-#define B1 6
-#define C1 5
-#define D1 4
-#define E1 3
-#define F1 2
-#define G1 1
-#define H1 0
+enum Square
+{
+    H1, G1, F1, E1, D1, C1, B1, A1,
+    H2, G2, F2, E2, D2, C2, B2, A2,
+    H3, G3, F3, E3, D3, C3, B3, A3,
+    H4, G4, F4, E4, D4, C4, B4, A4,
+    H5, G5, F5, E5, D5, C5, B5, A5,
+    H6, G6, F6, E6, D6, C6, B6, A6,
+    H7, G7, F7, E7, D7, C7, B7, A7,
+    H8, G8, F8, E8, D8, C8, B8, A8,
 
-#define A2 15
-#define B2 14
-#define C2 13
-#define D2 12
-#define E2 11
-#define F2 10
-#define G2 9
-#define H2 8
-
-#define A3 23
-#define B3 22
-#define C3 21
-#define D3 20
-#define E3 19
-#define F3 18
-#define G3 17
-#define H3 16
-
-#define A4 31
-#define B4 30
-#define C4 29
-#define D4 28
-#define E4 27
-#define F4 26
-#define G4 25
-#define H4 24
-
-#define A5 39
-#define B5 38
-#define C5 37
-#define D5 36
-#define E5 35
-#define F5 34
-#define G5 33
-#define H5 32
-
-#define A6 47
-#define B6 46
-#define C6 45
-#define D6 44
-#define E6 43
-#define F6 42
-#define G6 41
-#define H6 40
-
-#define A7 55
-#define B7 54
-#define C7 53
-#define D7 52
-#define E7 51
-#define F7 50
-#define G7 49
-#define H7 48
-
-#define A8 63
-#define B8 62
-#define C8 61
-#define D8 60
-#define E8 59
-#define F8 58
-#define G8 57
-#define H8 56
-
-#define NO_SQ 64
+    NO_SQ = 64
+};
 
 /* --------------------------------- RANDOM --------------------------------- */
 #define FEN_REGEX "^(([PRNBKQprnbkq1-8]){1,8}\\/){7}(([PRNBKQprnbkq1-8]){1,8}) (w|b) (-|(K?Q?k?)q|(K?Q?kq?)|(K?Qk?q?)|(KQ?k?q?)) (-|[a-h][1-8]) (0|[1-9][0-9]*) (0|[1-9][0-9]*)$"
+
+/* -------------------------------------------------------------------------- */
+/*                                   SEARCH                                   */
+/* -------------------------------------------------------------------------- */
+
+enum SearchLimitType
+{
+    DEPTH_LIM,
+    TIME_LIM,
+    NODE_LIM,
+
+    NO_LIM
+};
 

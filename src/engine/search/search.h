@@ -16,7 +16,7 @@ struct MoveStack
 struct RootMove
 {
 
-    Move_t move;
+    MoveStack mstack;
     ScoreVal_t score;
     ScoreVal_t previous_score;
 
@@ -27,5 +27,6 @@ struct RootMove
 /*                              SEARCH ALGORITHM                              */
 /* -------------------------------------------------------------------------- */
 
+void search();
 int negamax_ab(int alpha, int beta, int depth_left);
 int quiesce(int alpha, int beta);
