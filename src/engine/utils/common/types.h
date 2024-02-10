@@ -60,6 +60,7 @@ enum Piece {
 constexpr PieceType pieces[6] = {KING, QUEEN, BISHOP, KNIGHT, ROOK ,PAWN};
 constexpr Piece whitePieces[6] = {K, Q, B, N, R, P};
 constexpr Piece blackPieces[6] = {k, q, b, n, r, p};
+constexpr Piece allPieces[12] = {K, Q, B, N, R, P, k, q, b, n, r, p};
 
 
 constexpr const Piece *getColoredPieces(Side sd)
@@ -72,6 +73,16 @@ constexpr const Piece *getColoredPieces(Side sd)
     {
         return blackPieces;
     }
+}
+
+constexpr PieceType getPieceType(Piece piece)
+{
+    if( piece == no_piece )
+    {
+        return NONE;
+    }
+
+    return pieces[piece % 6];
 }
 
 constexpr Piece convertPiece(PieceType pt, Side sd)
@@ -134,12 +145,14 @@ typedef U32 Move_t;
 /* Move_t type description bit by bit
 bits 0-6    -> source square of the piece
 bits 6-11   -> target square of the piece to move to
-bits 12-16  -> promoted piece (no_piece enum if no promotion (12))
-bit  16     -> capture flag
-bit  17     -> double push flag
-bit  18     -> en passant flag
-bit  19     -> castle flag
-bit  20     -> rook move (this flag is used to update castling rights (queens also have this flag!))
+bits 12-15  -> source piece
+bits 16-19  -> promoted piece (no_piece enum if no promotion (12))
+bit  20     -> capture flag
+bit  21     -> double push flag
+bit  22     -> en passant flag
+bit  23     -> castle flag
+bit  24     -> rook move (this flag is used to update castling rights (queens also have this flag!))
+bit  25     -> normal pawn push flag
 
 Below are flag getters
 */
@@ -279,6 +292,8 @@ enum Square
 /* -------------------------------------------------------------------------- */
 /*                                   SEARCH                                   */
 /* -------------------------------------------------------------------------- */
+
+#define SEARCH_INF 200
 
 enum SearchLimitType
 {

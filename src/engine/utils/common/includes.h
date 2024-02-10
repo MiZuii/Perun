@@ -10,7 +10,15 @@
 #include <regex>
 #include <chrono>
 #include <iomanip>
+#include <algorithm>
+#include <set>
+#include <numeric>
+#include <cctype>
 
-#ifdef x86_64
 #include <immintrin.h>
-#endif
+// intrin.h for different versions of gcc
+#include <x86intrin.h>
+
+#include <thread>
+#include <stop_token>
+#include <mutex>

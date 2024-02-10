@@ -195,6 +195,16 @@ Board::Board(const Board &board, Move_t move)
     this->makeMove(move);
 }
 
+Board::Board(const Board &board)
+{
+    *this = board;
+}
+
+Board::Board(Board &&board)
+{
+    *this = board;
+}
+
 Board &Board::operator=(const Board &other)
 {
     _side_to_move = other._side_to_move;

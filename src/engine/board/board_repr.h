@@ -95,8 +95,8 @@ public:
     Board();    // FEN_t of starting position is used to init
     Board(const FEN_t fen);
     Board(const Board &board, Move_t move);
-    Board(const Board &board) = delete;
-    Board(Board &&board) = delete;
+    Board(const Board &board);
+    Board(Board &&board);
     ~Board() = default;
 
     Board &operator=(const Board &);
@@ -104,6 +104,7 @@ public:
     void getMoves(); // public template wrapper
     void clearMoves();
     Board& makeMove(Move_t move);
+    Move_t createAmbiguousMove(Move_t move);
 
     static bool validFEN(FEN_t fen);
 
@@ -114,7 +115,7 @@ public:
     static Piece charToPiece(char pieceChar);
     static char PieceToChar(Piece piece);
     static wchar_t PieceToWChar(Piece piece);
-    static U8 squareToInt(char field, char rank);
+    static U8 squareToInt(char field, char rank); // used outside
     static char intToField(U8 square);
     static char intToRank(U8 square);
     static std::string moveToString(Move_t move);

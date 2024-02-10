@@ -1,12 +1,28 @@
 #pragma once
 
-#include "../utils/common/includes.h"
-#include "../utils/common/types.h"
-#include "../utils/common/bit_opers.h"
+#include "../evaluation/evaluation.h"
 
 /* -------------------------------------------------------------------------- */
 /*                              SEARCH STRUCTURES                             */
 /* -------------------------------------------------------------------------- */
+
+struct EngineResults
+{
+    // calculation state variables
+    bool new_data = false;
+    bool finished = false;
+
+    int current_depth;
+    Move_t best_move;
+};
+
+struct SearchArgs
+{
+    SearchLimitType search_type = DEPTH_LIM;
+    int depth_lim = SEARCH_INF;
+    int time_lim;
+    int node_lim;
+};
 
 struct MoveStack
 {
@@ -16,8 +32,10 @@ struct MoveStack
 struct RootMove
 {
 
-    MoveStack mstack;
+    Move_t root_move;
     ScoreVal_t score;
+
+    MoveStack mstack;
     ScoreVal_t previous_score;
 
 };
@@ -27,6 +45,8 @@ struct RootMove
 /*                              SEARCH ALGORITHM                              */
 /* -------------------------------------------------------------------------- */
 
-void search();
-int negamax_ab(int alpha, int beta, int depth_left);
-int quiesce(int alpha, int beta);
+void search(std::stop_token stok, Board board, std::vector<Move_t> move_hist, 
+    SearchArgs args, EngineResults &engr, std::mutex &engmtx);
+void _search(std::stop_token stok, Board board, RootMove &rm, SearchArgs args);
+int negamax_ab(Board board, int alpha, int beta, int depth_left);
+int quiesce(Board &board, int alpha, int beta);

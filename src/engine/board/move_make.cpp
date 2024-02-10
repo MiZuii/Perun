@@ -198,3 +198,83 @@ Board &Board::makeMove(Move_t move)
 
     return *this;
 }
+
+Move_t Board::createAmbiguousMove(Move_t move)
+{
+    Piece source_piece = no_piece;
+    for(Piece try_piece : allPieces)
+    {
+        if(GET_BIT(_piece_bitboards[try_piece], getSourceSquare(move)))
+        {
+            source_piece = try_piece;
+            break;
+        }
+    }
+
+    // checks if source piece is correctly specified
+    assert( source_piece != no_piece );
+    if(_side_to_move == WHITE)
+    {
+        assert(isWhitePiece(source_piece));
+    }
+    else
+    {
+        assert(isBlackPiece(source_piece));
+    }
+
+    Piece promotion_piece = getPromotionPiece(move);
+    if( promotion_piece != no_piece )
+    {
+        promotion_piece = convertPiece(getPieceType(promotion_piece), _side_to_move);
+        
+        // check if promotion piece is correct
+        assert(getPieceType(promotion_piece) == QUEEN ||
+            getPieceType(promotion_piece) == BISHOP ||
+            getPieceType(promotion_piece) == KNIGHT ||
+            getPieceType(promotion_piece) == ROOK);
+    }
+
+    bool capture_flag = false;
+    if(_side_to_move == WHITE)
+    {
+        // check if move doesn't capture it's own piece
+        assert(GET_BIT(_occ_bitboards[WHITE], getTargetSquare(move)) == 0);
+
+        capture_flag = GET_BIT(_occ_bitboards[BLACK], getTargetSquare(move));
+    }
+    else if(_side_to_move == BLACK)
+    {
+        // check if move doesn't capture it's own piece
+        assert(GET_BIT(_occ_bitboards[BLACK], getTargetSquare(move)) == 0);
+
+        capture_flag = GET_BIT(_occ_bitboards[WHITE], getTargetSquare(move));
+    }
+
+    bool double_pawn_push_flag = false;
+    bool normal_pawn_push_flag = false;
+    if( getPieceType(source_piece) == PAWN )
+    {
+        int diff = abs(getTargetSquare(move) / 8 - getSourceSquare(move) / 8);
+        double_pawn_push_flag = (diff == 2);
+        normal_pawn_push_flag = (diff == 1);
+    }
+
+    bool en_passant_flag = false;
+    if( getPieceType(source_piece) == PAWN && getTargetSquare(move) == _en_passant && _en_passant != NO_SQ )
+    {
+        en_passant_flag = true;
+    }
+
+    bool castle_flag = false;
+    if( getPieceType(source_piece) == KING )
+    {
+        int diff = abs((getTargetSquare(move) % 8) - (getSourceSquare(move) % 8));
+        castle_flag = (diff > 1);
+    }
+
+    bool rook_move_flag = (getPieceType(source_piece) == ROOK);
+
+    return createMove(getSourceSquare(move), getTargetSquare(move),
+        source_piece, promotion_piece, capture_flag, double_pawn_push_flag, 
+        en_passant_flag, castle_flag, rook_move_flag, normal_pawn_push_flag);
+}
