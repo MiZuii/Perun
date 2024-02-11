@@ -9,7 +9,7 @@
 int main(void) {
 #if DEBUG
 
-    // perft(STARTING_POS, 6);
+    // perft(STARTING_POS, 5);
     run();
 
 #endif

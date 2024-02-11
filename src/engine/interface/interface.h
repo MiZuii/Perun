@@ -76,6 +76,7 @@ private:
 
     // misc
     static Move_t parse_move(std::string raw_move);
+    static std::string unparse_move(Move_t move);
 
 public:
     void init() override; // used in constructor (declared outside for manual reset without creating new object)

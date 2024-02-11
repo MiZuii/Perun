@@ -18,7 +18,7 @@ void search(std::stop_token stok, Board board, std::vector<Move_t> move_hist,
         root_threads.push_back(std::jthread(_search, Board(board, move) ,std::ref(root_moves.back()), args));
     }
 
-    std::reference_wrapper<RootMove> best_move(root_moves[0]);
+    RootMove *best_move = &root_moves[0];
 
     // controll loop
     while(!stok.stop_requested())
@@ -28,12 +28,13 @@ void search(std::stop_token stok, Board board, std::vector<Move_t> move_hist,
             if(rm.score > bs)
             {
                 bs = rm.score;
-                best_move = std::reference_wrapper<RootMove>(rm);
+                best_move = &rm;
             }
         }
 
         if(previous_bs != bs)
         {
+            engr.best_move = best_move->root_move;
             previous_bs = bs;
 
             engmtx.lock();
@@ -64,11 +65,31 @@ void search(std::stop_token stok, Board board, std::vector<Move_t> move_hist,
 
 void _search(std::stop_token stok, Board board, RootMove &rm, SearchArgs args)
 {
+    // initiate search type and parameters based on the RootMove and SearchArgs information
+    const int loc_depth_lim = SEARCH_INF;
+    const int loc_depth_start = 4;
 
+    // search
+
+    for(int d=loc_depth_start; d < loc_depth_lim; d++)
+    {
+        if(stok.stop_requested())
+        {
+            break;
+        }
+
+        ScoreVal_t lscore = negamax_ab(board, -EVAL_INF, EVAL_INF, d, stok);
+        rm.score = lscore;
+    }
 }
 
-int negamax_ab(Board board, int alpha, int beta, int depth_left)
+int negamax_ab(Board board, int alpha, int beta, int depth_left, std::stop_token &stok)
 {
+    if(stok.stop_requested())
+    {
+        return 0;
+    }
+
     // search lim check
     if( 0 == depth_left )
     {
@@ -80,7 +101,7 @@ int negamax_ab(Board board, int alpha, int beta, int depth_left)
 
     for(Move_t move : board.moves)
     {
-        ScoreVal_t local_score = -negamax_ab({board, move}, -beta, -alpha, depth_left-1);
+        ScoreVal_t local_score = -negamax_ab({board, move}, -beta, -alpha, depth_left-1, stok);
         if( local_score >= beta)
         {
             return beta; // hard beta-cutoff
@@ -95,5 +116,12 @@ int negamax_ab(Board board, int alpha, int beta, int depth_left)
 
 int quiesce(Board &board, int alpha, int beta)
 {
-    return evaluate(board);
+    if(board.sideToMove())
+    {
+        return evaluate<true>(board);
+    }
+    else
+    {
+        return evaluate<false>(board);
+    }
 }

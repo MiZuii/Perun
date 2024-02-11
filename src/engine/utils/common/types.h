@@ -293,6 +293,8 @@ enum Square
 /*                                   SEARCH                                   */
 /* -------------------------------------------------------------------------- */
 
+#define EVAL_INF 10000
+
 #define SEARCH_INF 200
 
 enum SearchLimitType

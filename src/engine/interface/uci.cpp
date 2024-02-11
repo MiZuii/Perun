@@ -243,7 +243,6 @@ void UciInterface::option(std::string option_name, UciOptionType type,
 
 void UciInterface::messenger(EngineResults &engr, std::mutex &endmtx)
 {
-    std::cout << "new thread messenger" << std::endl;
     while(true)
     {
         endmtx.lock();
@@ -255,7 +254,7 @@ void UciInterface::messenger(EngineResults &engr, std::mutex &endmtx)
         }
 
         // new data -> perform sending
-        message("new data c:");
+        message("bestmove: " + unparse_move(engr.best_move));
 
         // mark that data was read
         engr.new_data = false;
@@ -302,4 +301,14 @@ Move_t UciInterface::parse_move(std::string raw_move)
 
     Piece promotion_piece = Board::charToPiece(raw_move[4]);
     return createMove(source_square, target_square, no_piece, promotion_piece, false, false, false, false, false, false);
+}
+
+std::string UciInterface::unparse_move(Move_t move)
+{
+    std::string res;
+    res += Board::intToField(getSourceSquare(move));
+    res += Board::intToRank(getSourceSquare(move));
+    res += Board::intToField(getTargetSquare(move));
+    res += Board::intToRank(getTargetSquare(move));
+    return res;
 }

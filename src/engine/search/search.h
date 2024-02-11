@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../evaluation/evaluation.h"
+#include "../board/board_repr.h"
 
 /* -------------------------------------------------------------------------- */
 /*                              SEARCH STRUCTURES                             */
@@ -48,5 +48,5 @@ struct RootMove
 void search(std::stop_token stok, Board board, std::vector<Move_t> move_hist, 
     SearchArgs args, EngineResults &engr, std::mutex &engmtx);
 void _search(std::stop_token stok, Board board, RootMove &rm, SearchArgs args);
-int negamax_ab(Board board, int alpha, int beta, int depth_left);
+int negamax_ab(Board board, int alpha, int beta, int depth_left, std::stop_token &stok);
 int quiesce(Board &board, int alpha, int beta);
