@@ -240,14 +240,14 @@ void Board::_refresh()
                     int pawn_index = bit_index(enemy_pawns);
                     U64 current_pawn_attack = get_black_pawn_attack(pawn_index);
                     _enemy_attack_bb |= current_pawn_attack;
-                    _checkers |= king_bitboard & current_pawn_attack ? (1UL << current_pawn_attack) : 0;
+                    _checkers |= king_bitboard & current_pawn_attack ? (1UL << pawn_index) : 0;
                 }
                 else
                 {
                     int pawn_index = bit_index(enemy_pawns);
                     U64 current_pawn_attack = get_white_pawn_attack(pawn_index);
                     _enemy_attack_bb |= current_pawn_attack;
-                    _checkers |= king_bitboard & current_pawn_attack ? (1UL << current_pawn_attack) : 0;
+                    _checkers |= king_bitboard & current_pawn_attack ? (1UL << pawn_index) : 0;
                 }
             }
         }
@@ -257,14 +257,14 @@ void Board::_refresh()
             U64 bs_checkers = _checkers;
             bitScan(bs_checkers)
             {
-                int checker_index = bit_index(bs_checkers);
-                U64 checker_bitboard = (1UL << checker_index);
+                const int checker_index = bit_index(bs_checkers);
+                const U64 checker_bitboard = (1UL << checker_index);
                 if(checker_bitboard & (_piece_bitboards[enemyPiece<WhiteMove>(BISHOP)] | enemy_queen))
                 {
                     // register bishoplike check
                     _checkmask |= get_bishop_checkmask(checker_index, king_idx);
                 }
-                else if(checker_bitboard & (_piece_bitboards[enemyPiece<WhiteMove>(ROOK)] | enemy_queen))
+                if(checker_bitboard & (_piece_bitboards[enemyPiece<WhiteMove>(ROOK)] | enemy_queen))
                 {
                     // register rooklike check
                     _checkmask |= get_rook_checkmask(checker_index, king_idx);
@@ -289,18 +289,12 @@ void Board::_getMoves()
 {
 
     _refresh<WhiteMove>();
-    U64 sadsauqre_bb=0, movemask;
 
-    //Divide into position with one or less checks and positions with more checks
-    switch (bit_count(_checkers))
+    if(bit_count(_checkers) != 2)
     {
-    case 0:
-        sadsauqre_bb = ~_get_sadsquare(king_idx, _checkmask);
-        _checkmask = UINT64_MAX;
-        [[fallthrough]];
-
-    case 1:
-        movemask = ~(_occ_bitboards[playerSide<WhiteMove>()]) & _checkmask;
+        U64 sadsquare_bb    = ~_get_sadsquare(king_idx, _checkmask | _checkers);
+        _checkmask          = _checkers ? (_checkmask | _checkers) : UINT64_MAX;
+        U64 movemask        = ~(_occ_bitboards[playerSide<WhiteMove>()]) & _checkmask;
 
         /* ----------------------------- STANDARD MOVES ----------------------------- */
 
@@ -558,7 +552,7 @@ void Board::_getMoves()
         /* ------------------------------- KING MOVES ------------------------------- */
 
         {
-            U64 player_king = get_king_attack(king_idx) & ~_enemy_attack_bb & ~_occ_bitboards[playerSide<WhiteMove>()] & sadsauqre_bb;
+            U64 player_king = get_king_attack(king_idx) & ~_enemy_attack_bb & ~_occ_bitboards[playerSide<WhiteMove>()] & sadsquare_bb;
 
             bitScan(player_king)
             {
@@ -583,10 +577,9 @@ void Board::_getMoves()
                 }
             }
         }
-
-        break;
-    
-    default:
+    }
+    else
+    {
         /* only king moves (no castling) */
         U64 player_king = get_king_attack(king_idx) & ~_enemy_attack_bb & ~_occ_bitboards[playerSide<WhiteMove>()] & ~_get_sadsquare(king_idx, _checkmask);
 

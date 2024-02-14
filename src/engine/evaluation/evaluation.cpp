@@ -90,17 +90,13 @@ int evaluate(Board &board)
         }
     }
 
-    // relative
-    const ScoreVal_t positionActivity = 8*(bit_count(player_attack_bb) - bit_count(board._enemy_attack_bb));
+    ScoreVal_t position_activity = 8*(bit_count(player_attack_bb) - bit_count(board._enemy_attack_bb));
+    if constexpr (!WhiteMove)
+    {
+        position_activity = -position_activity;
+    }
 
-    if constexpr (WhiteMove)
-    {
-        return material_score + positionActivity;
-    }
-    else
-    {
-        return positionActivity - material_score;
-    }
+    return material_score + position_activity;
 }
 
 template int evaluate<true>(Board &board);

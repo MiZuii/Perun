@@ -22,3 +22,4 @@
 #include <thread>
 #include <stop_token>
 #include <mutex>
+#include <atomic>

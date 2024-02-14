@@ -1,76 +1,57 @@
 #include "search.h"
 
-#include "../interface/game.h"
+#include "../interface/interface.h"
 
-void search(std::stop_token stok, Board board, std::vector<Move_t> move_hist, 
+void search(std::stop_token stok, Board board, const std::vector<Move_t> move_hist, 
     SearchArgs args, EngineResults &engr, std::mutex &engmtx)
 {
     // init
     board.getMoves();
-    std::vector<RootMove> root_moves;
-    std::vector<std::jthread> root_threads;
-    ScoreVal_t bs = 0, previous_bs = 0;
+    std::vector<std::jthread>   root_threads;
+    std::atomic<int>            completion_counter          = 0;
+    const unsigned int          number_of_search_threads    = board.moves.size();
+    const Side                  player                      = board.sideToMove();
 
-    // start searching
+    // init searching threads
     for(Move_t move : board.moves)
     {
-        root_moves.push_back(RootMove(move, 0, MoveStack(), ScoreVal_t()));
-        root_threads.push_back(std::jthread(_search, Board(board, move) ,std::ref(root_moves.back()), args));
+        root_threads.push_back(std::jthread(_search, Board(board, move), 
+            move, std::ref(engr) , std::ref(engmtx), args, player, std::ref(completion_counter),
+            std::ref(move_hist)));
     }
-
-    RootMove *best_move = &root_moves[0];
 
     // controll loop
     while(!stok.stop_requested())
     {
-        for(RootMove &rm : root_moves)
+        if(number_of_search_threads == completion_counter.load())
         {
-            if(rm.score > bs)
-            {
-                bs = rm.score;
-                best_move = &rm;
-            }
+            break;
         }
-
-        if(previous_bs != bs)
-        {
-            engr.best_move = best_move->root_move;
-            previous_bs = bs;
-
-            engmtx.lock();
-            engr.new_data = true;
-            engmtx.unlock();
-        }
-    }
-
-    // stop searching threads
-    for(std::jthread &jt : root_threads)
-    {
-        jt.request_stop();
-    }
-
-    for(std::jthread &jt : root_threads)
-    {
-        jt.join();
     }
 
     // exiting must dos'
     engmtx.lock();
-    engr.new_data = true;
     engr.finished = true;
     engmtx.unlock();
 
     Game::game_running = false;
 }
 
-void _search(std::stop_token stok, Board board, RootMove &rm, SearchArgs args)
+void _search(std::stop_token stok, Board board, Move_t move,
+    EngineResults &engr, std::mutex &engmtx, SearchArgs args, 
+    const Side player, std::atomic<int> &comp_counter, 
+    const std::vector<Move_t> &move_hist)
 {
     // initiate search type and parameters based on the RootMove and SearchArgs information
-    const int loc_depth_lim = SEARCH_INF;
-    const int loc_depth_start = 4;
+    const int loc_depth_lim     = args.search_type == DEPTH_LIM ? args.depth_lim : SEARCH_INF;
+    const int loc_depth_start   = args.depth_start;
+    RootMove  rm                = {move, 0, 0, 
+                                   {std::vector<Move_t>(move_hist), move_hist.size() + 1}, 
+                                   0, player, stok};
+
+    rm.mstack.moves.push_back(move);
 
     // search
-
     for(int d=loc_depth_start; d < loc_depth_lim; d++)
     {
         if(stok.stop_requested())
@@ -78,33 +59,53 @@ void _search(std::stop_token stok, Board board, RootMove &rm, SearchArgs args)
             break;
         }
 
-        ScoreVal_t lscore = negamax_ab(board, -EVAL_INF, EVAL_INF, d, stok);
-        rm.score = lscore;
+        ScoreVal_t lscore   = negamax_ab(board, -EVAL_INF, EVAL_INF, d, rm);
+        rm.score            = lscore;
+        rm.eval_depth       = d;
+
+        update_engres(rm, engr, engmtx);
     }
+
+    comp_counter++;
 }
 
-int negamax_ab(Board board, int alpha, int beta, int depth_left, std::stop_token &stok)
+int negamax_ab(Board board, int alpha, int beta, int depth_left, RootMove &rm)
 {
-    if(stok.stop_requested())
+    if(rm.stok.stop_requested())
     {
         return 0;
-    }
-
-    // search lim check
-    if( 0 == depth_left )
-    {
-        return quiesce(board, alpha, beta);
     }
 
     // generate moves for current node
     board.getMoves();
 
+    if(board.moves.empty())
+    {
+        if(board.getCheckers())
+        {
+            return board.sideToMove() == rm.player ? EVAL_INF : -EVAL_INF;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    // search lim check
+    if( 0 == depth_left )
+    {
+        return quiesce(board, alpha, beta, rm);
+    }
+
     for(Move_t move : board.moves)
     {
-        ScoreVal_t local_score = -negamax_ab({board, move}, -beta, -alpha, depth_left-1, stok);
+        rm.mstack.moves.push_back(move);
+        ScoreVal_t local_score = -negamax_ab({board, move}, -beta, -alpha, depth_left-1, rm);
+        rm.mstack.moves.pop_back();
+
         if( local_score >= beta)
         {
-            return beta; // hard beta-cutoff
+            return beta; // cutof (hard/soft base on the current negamax node)
         }
         if( local_score > alpha )
         {
@@ -114,14 +115,51 @@ int negamax_ab(Board board, int alpha, int beta, int depth_left, std::stop_token
     return alpha;
 }
 
-int quiesce(Board &board, int alpha, int beta)
+int quiesce(Board &board, int alpha, int beta, RootMove &rm)
 {
-    if(board.sideToMove())
+    // should be moved to eval
+    rm.nc++;
+
+    if(board.sideToMove() == WHITE)
     {
-        return evaluate<true>(board);
+        return board.sideToMove() == rm.player ? evaluate<true>(board) : -evaluate<true>(board);
     }
     else
     {
-        return evaluate<false>(board);
+        return board.sideToMove() == rm.player ? evaluate<false>(board) : -evaluate<false>(board);
     }
+}
+
+void update_engres(RootMove &rm, EngineResults &engr, std::mutex &engmtx)
+{
+    engmtx.lock();
+
+    bool new_data_flag = false;
+
+    // score update
+    if((rm.player == WHITE ? rm.score > engr.best_score : rm.score < engr.best_score) || engr.best_move == 0)
+    {
+        engr.best_move  = rm.root_move;
+        engr.best_score = rm.score;
+        new_data_flag   = true;
+    }
+
+    // depth update
+    if(rm.eval_depth > engr.current_max_depth)
+    {
+        engr.current_max_depth  = rm.eval_depth;
+        new_data_flag           = true;
+    }
+
+    if(rm.nc != 0)
+    {
+        engr.node_count.fetch_add(rm.nc);
+        rm.nc = 0;
+        new_data_flag = true;
+    }
+
+    // set flag if anything changed
+    engr.new_data = new_data_flag;
+
+    engmtx.unlock();
 }

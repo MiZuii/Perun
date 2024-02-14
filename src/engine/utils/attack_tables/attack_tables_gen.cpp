@@ -872,7 +872,6 @@ void generate_rook_checkmask(U64 (&attack)[SIZE][SIZE])
             if(found_flag)
             {
                 continue;
-                std::cout << "broke for: " << king_idx << piece_idx << std::endl;
             }
 
             // downward
@@ -893,7 +892,7 @@ void generate_rook_checkmask(U64 (&attack)[SIZE][SIZE])
                 continue;
             }
 
-            // right
+            // left
             attack[king_idx][piece_idx] = 0;
             found_flag = false;
             for(int col=(king_idx % 8) + 1; col<=(piece_idx % 8); col++){
@@ -911,7 +910,7 @@ void generate_rook_checkmask(U64 (&attack)[SIZE][SIZE])
                 continue;
             }
 
-            // left
+            // right
             attack[king_idx][piece_idx] = 0;
             found_flag = false;
             for(int col=(king_idx % 8) - 1; col>=(piece_idx % 8); col--){
@@ -928,6 +927,8 @@ void generate_rook_checkmask(U64 (&attack)[SIZE][SIZE])
             {
                 continue;
             }
+
+            attack[king_idx][piece_idx] = 0;
         }
     }
     // checkmask_print(attack, "rook_checkmask");

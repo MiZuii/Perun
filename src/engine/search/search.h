@@ -9,44 +9,57 @@
 struct EngineResults
 {
     // calculation state variables
-    bool new_data = false;
-    bool finished = false;
+    bool        new_data;
+    bool        finished;
 
-    int current_depth;
-    Move_t best_move;
+    Move_t      best_move;
+    ScoreVal_t  best_score;
+    Depth_t     current_max_depth;
+
+    std::atomic<int> node_count;
 };
 
 struct SearchArgs
 {
     SearchLimitType search_type = DEPTH_LIM;
-    int depth_lim = SEARCH_INF;
-    int time_lim;
-    int node_lim;
+    Depth_t         depth_lim   = SEARCH_INF;
+    Depth_t         depth_start = 0;
+    int             time_lim;
+    int             node_lim;
 };
 
 struct MoveStack
 {
     std::vector<Move_t> moves;
+    Depth_t             ms_idx; // start of non history moves (root counts as history)
 };
 
 struct RootMove
 {
+    Move_t      root_move;
+    ScoreVal_t  score;
+    Depth_t     eval_depth;
 
-    Move_t root_move;
-    ScoreVal_t score;
+    MoveStack   mstack;
 
-    MoveStack mstack;
-    ScoreVal_t previous_score;
+    int         nc;
+    const Side  player;
 
+    const std::stop_token &stok;
 };
-
 
 /* -------------------------------------------------------------------------- */
 /*                              SEARCH ALGORITHM                              */
 /* -------------------------------------------------------------------------- */
 
-void search(std::stop_token stok, Board board, std::vector<Move_t> move_hist, 
+void search(std::stop_token stok, Board board, const std::vector<Move_t> move_hist, 
     SearchArgs args, EngineResults &engr, std::mutex &engmtx);
-void _search(std::stop_token stok, Board board, RootMove &rm, SearchArgs args);
-int negamax_ab(Board board, int alpha, int beta, int depth_left, std::stop_token &stok);
-int quiesce(Board &board, int alpha, int beta);
+void _search(std::stop_token stok, Board board, Move_t move, EngineResults &engr, 
+    std::mutex &engmtx, SearchArgs args, const Side player, std::atomic<int> &comp_counter,
+    const std::vector<Move_t> &move_hist);
+int negamax_ab(Board board, int alpha, int beta, int depth_left, RootMove &rm);
+int quiesce(Board &board, int alpha, int beta, RootMove &rm);
+
+/* ----------------------------- HELP FUNCTIONS ----------------------------- */
+
+void update_engres(RootMove &rm, EngineResults &engr, std::mutex &engmtx);

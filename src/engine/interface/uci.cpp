@@ -156,7 +156,7 @@ void UciInterface::go(std::vector<std::string> &args)
     SearchArgs args_fill;
 
     // parse go arguments
-    if(std::find(args.begin(), args.end(), "infinity") != args.end())
+    if(std::find(args.begin(), args.end(), "infinite") != args.end())
     {
         args_fill.search_type = DEPTH_LIM;
         args_fill.depth_lim = SEARCH_INF;
@@ -164,8 +164,15 @@ void UciInterface::go(std::vector<std::string> &args)
 
     if(std::find(args.begin(), args.end(), "depth") != args.end())
     {
-        args_fill.search_type = DEPTH_LIM;
-        args_fill.depth_lim = std::stoi(*++std::find(args.begin(), args.end(), "depth"));
+        try
+        {
+            args_fill.search_type = DEPTH_LIM;
+            args_fill.depth_lim = std::stoi(*++std::find(args.begin(), args.end(), "depth"));
+        }
+        catch(const std::invalid_argument& e)
+        {
+            warning("Invalid argument to depth option.");
+        }
     }
 
     if(std::find(args.begin(), args.end(), "movetime") != args.end())
@@ -247,20 +254,27 @@ void UciInterface::messenger(EngineResults &engr, std::mutex &endmtx)
     {
         endmtx.lock();
 
-        if(!engr.new_data)
+        if(!engr.new_data && !engr.finished)
         {
             endmtx.unlock();
             continue;
         }
 
         // new data -> perform sending
-        message("bestmove: " + unparse_move(engr.best_move));
+        message("info: " + unparse_move(engr.best_move) + 
+                " score: " + std::to_string(engr.best_score) + 
+                " max depth: " + std::to_string(engr.current_max_depth) + 
+                " nodes count: " + std::to_string(engr.node_count) );
 
         // mark that data was read
         engr.new_data = false;
 
         if(engr.finished)
         {
+            message("bestmove: " + unparse_move(engr.best_move) + 
+                " score: " + std::to_string(engr.best_score) + 
+                " max depth: " + std::to_string(engr.current_max_depth) + 
+                " nodes count: " + std::to_string(engr.node_count) );
             endmtx.unlock();
             break;
         }

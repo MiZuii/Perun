@@ -144,7 +144,8 @@ public:
     std::vector<Move_t> moves;
     template<bool WhiteMove>
     friend int evaluate(Board &board);
-    _ForceInline bool sideToMove() {return _side_to_move;};
+    _ForceInline Side sideToMove() {return _side_to_move;};
+    _ForceInline bool getCheckers() {return _checkers;};
 
     Board();    // FEN_t of starting position is used to init
     Board(const FEN_t fen);

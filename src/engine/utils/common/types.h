@@ -13,6 +13,9 @@ typedef uint8_t U8;
 
 typedef int32_t ScoreVal_t;
 
+// also denotes ply (the engine works only on ply values not full moves)
+typedef int32_t Depth_t;
+
 typedef std::string FEN_t;
 
 /* --------------------------- PIECE TYPES DEFINES -------------------------- */
