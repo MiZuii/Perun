@@ -11,6 +11,19 @@ void search(std::stop_token stok, Board board, const std::vector<Move_t> move_hi
     std::atomic<int>            completion_counter          = 0;
     const unsigned int          number_of_search_threads    = board.moves.size();
     const Side                  player                      = board.sideToMove();
+    const auto                  loc_start                   = std::chrono::steady_clock::now();
+
+    // search args init
+    if( TIME_LIM == args.search_type && -1 == args.time_lim)
+    {
+        args.time_lim = movetime_deduction(args, player);
+    }
+
+    // start time ocunt (after this line till creation of search threads there should be nothing)
+    {
+        std::lock_guard<std::mutex> end_guard(engmtx);
+        engr.tstart = std::chrono::steady_clock::now();
+    }
 
     // init searching threads
     for(Move_t move : board.moves)
@@ -23,18 +36,28 @@ void search(std::stop_token stok, Board board, const std::vector<Move_t> move_hi
     // controll loop
     while(!stok.stop_requested())
     {
-        if(number_of_search_threads == completion_counter.load())
+        if(number_of_search_threads <= completion_counter.load())
         {
             break;
         }
+
+        if( std::chrono::duration_cast<std::chrono::milliseconds>
+            (std::chrono::steady_clock::now() - loc_start).count() >= args.time_lim &&
+            args.search_type == TIME_LIM)
+        {
+            break;
+        }
+
+        std::this_thread::sleep_for(0ms);
     }
 
     // exiting must dos'
-    engmtx.lock();
-    engr.finished = true;
-    engmtx.unlock();
+    {
+        std::lock_guard<std::mutex> end_guard(engmtx);
+        engr.finished = true;
+    }
 
-    Game::game_running = false;
+    Engine::engine_running = false;
 }
 
 void _search(std::stop_token stok, Board board, Move_t move,
@@ -59,7 +82,7 @@ void _search(std::stop_token stok, Board board, Move_t move,
             break;
         }
 
-        ScoreVal_t lscore   = negamax_ab(board, -EVAL_INF, EVAL_INF, d, rm);
+        ScoreVal_t lscore   = -negamax_ab(board, -EVAL_INF, EVAL_INF, d, rm);
         rm.score            = lscore;
         rm.eval_depth       = d;
 
@@ -76,25 +99,18 @@ int negamax_ab(Board board, int alpha, int beta, int depth_left, RootMove &rm)
         return 0;
     }
 
+    // search lim check
+    if( 0 == depth_left )
+    {
+        return quiesce(board, alpha, beta, rm);
+    }
+
     // generate moves for current node
     board.getMoves();
 
     if(board.moves.empty())
     {
-        if(board.getCheckers())
-        {
-            return board.sideToMove() == rm.player ? EVAL_INF : -EVAL_INF;
-        }
-        else
-        {
-            return 0;
-        }
-    }
-
-    // search lim check
-    if( 0 == depth_left )
-    {
-        return quiesce(board, alpha, beta, rm);
+        return board.getCheckers() ? -EVAL_INF : 0;
     }
 
     for(Move_t move : board.moves)
@@ -115,32 +131,68 @@ int negamax_ab(Board board, int alpha, int beta, int depth_left, RootMove &rm)
     return alpha;
 }
 
-int quiesce(Board &board, int alpha, int beta, RootMove &rm)
+int quiesce(Board board, int alpha, int beta, RootMove &rm)
 {
-    // should be moved to eval
-    rm.nc++;
+    // generate moves for current node
+    board.getMoves();
 
-    if(board.sideToMove() == WHITE)
+    if(board.moves.empty())
     {
-        return board.sideToMove() == rm.player ? evaluate<true>(board) : -evaluate<true>(board);
+        return board.getCheckers() ? -EVAL_INF : 0;
     }
-    else
+
+    rm.nc++;
+    int stand_pat = board.sideToMove() == WHITE ? -evaluate<true>(board) : evaluate<false>(board);
+
+    if( stand_pat >= beta )
     {
-        return board.sideToMove() == rm.player ? evaluate<false>(board) : -evaluate<false>(board);
+        return beta;
     }
+    if( alpha < stand_pat )
+    {
+        alpha = stand_pat;
+    }
+
+    for(Move_t move : board.moves)
+    {
+        if(!getCaptureFlag(move))
+        {
+            continue;
+        }
+
+        rm.mstack.moves.push_back(move);
+        ScoreVal_t local_score = -quiesce({board, move}, -beta, -alpha, rm);
+        rm.mstack.moves.pop_back();
+
+        if( local_score >= beta )
+        {
+            return beta;
+        }
+        if( alpha < local_score )
+        {
+           alpha = local_score;
+        }
+    }
+    return alpha;
+}
+
+int movetime_deduction(const SearchArgs args, const Side player)
+{
+    // returns time in milliseconds
+    return 5000;
 }
 
 void update_engres(RootMove &rm, EngineResults &engr, std::mutex &engmtx)
 {
-    engmtx.lock();
+    std::lock_guard<std::mutex> end_guard(engmtx);
 
     bool new_data_flag = false;
 
     // score update
-    if((rm.player == WHITE ? rm.score > engr.best_score : rm.score < engr.best_score) || engr.best_move == 0)
+    if((rm.player == WHITE ? rm.score > engr.best_score : rm.score > -engr.best_score) || engr.best_move == 0)
     {
         engr.best_move  = rm.root_move;
-        engr.best_score = rm.score;
+        engr.best_score = rm.player == WHITE ? rm.score : -rm.score;
         new_data_flag   = true;
     }
 
@@ -158,8 +210,9 @@ void update_engres(RootMove &rm, EngineResults &engr, std::mutex &engmtx)
         new_data_flag = true;
     }
 
-    // set flag if anything changed
-    engr.new_data = new_data_flag;
-
-    engmtx.unlock();
+    // wakeup if new data 
+    if(new_data_flag)
+    {
+        engr.new_data.notify_all();
+    }
 }

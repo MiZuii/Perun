@@ -292,7 +292,7 @@ void Board::_getMoves()
 
     if(bit_count(_checkers) != 2)
     {
-        U64 sadsquare_bb    = ~_get_sadsquare(king_idx, _checkmask | _checkers);
+        U64 sadsquare_bb    = ~_get_sadsquare(king_idx, _checkmask);
         _checkmask          = _checkers ? (_checkmask | _checkers) : UINT64_MAX;
         U64 movemask        = ~(_occ_bitboards[playerSide<WhiteMove>()]) & _checkmask;
 
@@ -581,7 +581,15 @@ void Board::_getMoves()
     else
     {
         /* only king moves (no castling) */
-        U64 player_king = get_king_attack(king_idx) & ~_enemy_attack_bb & ~_occ_bitboards[playerSide<WhiteMove>()] & ~_get_sadsquare(king_idx, _checkmask);
+        U64 sadsquare_bb = 0;
+        U64 op_checkmask = _checkmask & get_king_attack(king_idx);
+        bitScan(op_checkmask)
+        {
+            sadsquare_bb |= _get_sadsquare(king_idx, LS1B(op_checkmask));
+        }
+        sadsquare_bb = ~sadsquare_bb;
+
+        U64 player_king = get_king_attack(king_idx) & ~_enemy_attack_bb & ~_occ_bitboards[playerSide<WhiteMove>()] & sadsquare_bb;
 
         bitScan(player_king)
         {

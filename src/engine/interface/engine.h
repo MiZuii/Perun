@@ -6,7 +6,7 @@
 
 #include "../search/search.h"
 
-class Game
+class Engine
 {
 private:
 
@@ -19,17 +19,17 @@ private:
 
 protected:
     
-    Game();
-    ~Game();
-    static Game* _instance;
+    Engine();
+    ~Engine();
+    static Engine* _instance;
 
 public:
 
-    Game(Game &other) = delete;
-    Game(Game &&other) = delete;
-    void operator=(const Game &other) = delete;
+    Engine(Engine &other) = delete;
+    Engine(Engine &&other) = delete;
+    void operator=(const Engine &other) = delete;
 
-    static Game* getInstance();
+    static Engine* getInstance();
     static void destroy();
 
     // main methods for game reseting.
@@ -44,7 +44,7 @@ public:
     static std::mutex &getEngineResultsMutex();
     static void cleanEngineResults();
 
-    static bool game_initialized;
-    static bool game_running;
+    static bool engine_initialized;
+    static bool engine_running;
 
 };

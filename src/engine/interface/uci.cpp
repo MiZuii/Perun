@@ -2,6 +2,7 @@
 
 std::thread UciInterface::_messenger_thread;
 bool UciInterface::debug_mode = false;
+std::chrono::milliseconds UciInterface::refresh_rate = 100ms;
 std::map<std::string, std::function<void(std::vector<std::string> &)>> UciInterface::commands_map = {
     {"uci", [](std::vector<std::string> &args) -> void { uci(args); }},
     {"isready", [](std::vector<std::string> &args) -> void { isready(args); }},
@@ -77,28 +78,28 @@ void UciInterface::setoption(std::vector<std::string> &args)
 
 void UciInterface::ucinewgame(std::vector<std::string> &args)
 {
-    if(Game::game_running)
+    if(Engine::engine_running)
     {
         warning("Cannot use this command right now, Engine is searching");
         return;
     }
 
-    Game::clear();
-    Game::create();
+    Engine::clear();
+    Engine::create();
 }
 
 void UciInterface::position(std::vector<std::string>& args)
 {
     // prepare game obj
-    if(Game::game_running)
+    if(Engine::engine_running)
     {
         warning("Cannot use this command right now, Engine is searching");
         return;
     }
 
-    if(!Game::game_initialized)
+    if(!Engine::engine_initialized)
     {
-        Game::create();
+        Engine::create();
     }
 
     // position parsing
@@ -107,7 +108,7 @@ void UciInterface::position(std::vector<std::string>& args)
 
     if(!args[1].compare("startpos"))
     {
-        Game::setPosition(STARTING_POS);
+        Engine::setPosition(STARTING_POS);
     }
     else if(!args[1].compare("fen"))
     {
@@ -124,7 +125,7 @@ void UciInterface::position(std::vector<std::string>& args)
                 [](const std::string& acc, const std::string& item) {
                   return acc.empty() ? item : acc + " " + item;
                 });
-        Game::setPosition(fen);
+        Engine::setPosition(fen);
     }
     else
     {
@@ -144,65 +145,83 @@ void UciInterface::position(std::vector<std::string>& args)
             simulation_board.makeMove(converted_moves.back());
         }
 
-        Game::setMoves(converted_moves);
+        Engine::setMoves(converted_moves);
+    }
+}
+
+bool has_arg(const std::string arg, std::vector<std::string> &args)
+{
+    return std::find(args.begin(), args.end(), arg) != args.end();
+}
+
+int get_arg(const std::string arg, std::vector<std::string> &args)
+{
+    try
+    {
+        return std::stoi(*++std::find(args.begin(), args.end(), arg));
+    }
+    catch(const std::invalid_argument& e)
+    {
+        warning("Invalid argument to " + arg + " option.");
+        return -1;
     }
 }
 
 void UciInterface::go(std::vector<std::string> &args)
 {
-    assert(Game::game_initialized);
-    assert(!Game::game_running);
+    assert(Engine::engine_initialized);
+    assert(!Engine::engine_running);
 
     SearchArgs args_fill;
 
-    // parse go arguments
-    if(std::find(args.begin(), args.end(), "infinite") != args.end())
+    // parse main searchtype args -> order specifies precedence
+    if(has_arg("infinite", args))
     {
         args_fill.search_type = DEPTH_LIM;
         args_fill.depth_lim = SEARCH_INF;
     }
 
-    if(std::find(args.begin(), args.end(), "depth") != args.end())
+    if(has_arg("depth", args))
     {
-        try
-        {
-            args_fill.search_type = DEPTH_LIM;
-            args_fill.depth_lim = std::stoi(*++std::find(args.begin(), args.end(), "depth"));
-        }
-        catch(const std::invalid_argument& e)
-        {
-            warning("Invalid argument to depth option.");
-        }
+        args_fill.search_type = DEPTH_LIM;
+        args_fill.depth_lim = get_arg("depth", args);
     }
 
-    if(std::find(args.begin(), args.end(), "movetime") != args.end())
-    {
-        args_fill.search_type = TIME_LIM;
-        args_fill.depth_lim = std::stoi(*++std::find(args.begin(), args.end(), "movetime"));
-    }
-
-    if(std::find(args.begin(), args.end(), "nodes") != args.end())
+    if(has_arg("nodes", args))
     {
         args_fill.search_type = NODE_LIM;
-        args_fill.depth_lim = std::stoi(*++std::find(args.begin(), args.end(), "nodes"));
+        args_fill.node_lim = get_arg("nodes", args);
     }
 
-    Game::setSearchArgs(args_fill);
+    if(has_arg("movetime", args))
+    {
+        args_fill.search_type = TIME_LIM;
+        args_fill.depth_lim = get_arg("movetime", args);
+    }
+    // end of main args precedence
+
+    if(has_arg("wtime", args))      {args_fill.wtime = get_arg("wtime", args);}
+    if(has_arg("btime", args))      {args_fill.wtime = get_arg("btime", args);}
+    if(has_arg("winc", args))       {args_fill.wtime = get_arg("winc", args);}
+    if(has_arg("binc", args))       {args_fill.wtime = get_arg("binc", args);}
+    if(has_arg("movestogo", args))  {args_fill.wtime = get_arg("movestogo", args);}
+
+    Engine::setSearchArgs(args_fill);
 
     // initialize messenger thread
     if(_messenger_thread.joinable())
     {
         _messenger_thread.join();
     }
-    _messenger_thread = std::thread(UciInterface::messenger, std::ref(Game::getEngineResultsStruct()), std::ref(Game::getEngineResultsMutex()));
+    _messenger_thread = std::thread(UciInterface::messenger, std::ref(Engine::getEngineResultsStruct()), std::ref(Engine::getEngineResultsMutex()));
 
     // start search
-    Game::start();
+    Engine::start();
 }
 
 void UciInterface::stop(std::vector<std::string> &args)
 {
-    Game::stop();
+    Engine::stop();
 }
 
 void UciInterface::ponderhit(std::vector<std::string> &args)
@@ -211,8 +230,11 @@ void UciInterface::ponderhit(std::vector<std::string> &args)
 
 void UciInterface::quit(std::vector<std::string> &args)
 {
-    Game::destroy();
-    _messenger_thread.join();
+    Engine::destroy();
+    if(_messenger_thread.joinable())
+    {
+        _messenger_thread.join();
+    }
     exit(0); //??
 }
 
@@ -232,14 +254,18 @@ void UciInterface::redyok()
     message("redyok");
 }
 
-void UciInterface::bestmove()
+void UciInterface::bestmove(Move_t best_move, Move_t ponder_move)
 {
-
-}
-
-void UciInterface::info()
-{
-
+    // ponder = 0 means no ponder move
+    if( 0 == ponder_move )
+    {
+        message("bestmove " + UciInterface::unparse_move(best_move));
+    }
+    else
+    {
+        message("bestmove " + UciInterface::unparse_move(best_move) + 
+            " ponder " + UciInterface::unparse_move(ponder_move));
+    }
 }
 
 void UciInterface::option(std::string option_name, UciOptionType type,
@@ -252,34 +278,33 @@ void UciInterface::messenger(EngineResults &engr, std::mutex &endmtx)
 {
     while(true)
     {
-        endmtx.lock();
+        std::unique_lock<std::mutex> ul(endmtx);
+        std::cv_status cvs = engr.new_data.wait_for(ul, UciInterface::refresh_rate);
 
-        if(!engr.new_data && !engr.finished)
-        {
-            endmtx.unlock();
-            continue;
-        }
-
-        // new data -> perform sending
-        message("info: " + unparse_move(engr.best_move) + 
-                " score: " + std::to_string(engr.best_score) + 
-                " max depth: " + std::to_string(engr.current_max_depth) + 
-                " nodes count: " + std::to_string(engr.node_count) );
-
-        // mark that data was read
-        engr.new_data = false;
-
+        // end thread if engine finished + send bestmove
         if(engr.finished)
         {
-            message("bestmove: " + unparse_move(engr.best_move) + 
-                " score: " + std::to_string(engr.best_score) + 
-                " max depth: " + std::to_string(engr.current_max_depth) + 
-                " nodes count: " + std::to_string(engr.node_count) );
-            endmtx.unlock();
+            bestmove(engr.best_move, 0); // no pondering implemented for now
+            engr.finished = false; // tmp
             break;
         }
 
-        endmtx.unlock();
+        // send periodic data
+        std::chrono::milliseconds search_dur = std::chrono::duration_cast<std::chrono::milliseconds>
+            (std::chrono::steady_clock::now() - engr.tstart);
+        if(search_dur.count() != 0)
+        {
+            message("info nps " + std::to_string(((int64_t)engr.node_count * 1000) / search_dur.count()));
+        }
+
+        // send specific data
+        if(std::cv_status::no_timeout == cvs)
+        {
+            message("info depth " + std::to_string(engr.current_max_depth) + 
+                " time " + std::to_string(search_dur.count()) +
+                " nodes " + std::to_string(engr.node_count) +
+                " score cp " + std::to_string(engr.best_score));
+        }
     }
 }
 

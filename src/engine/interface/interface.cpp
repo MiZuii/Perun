@@ -3,7 +3,7 @@
 void run()
 {
     // init first instance of game
-    Game::getInstance();
+    Engine::getInstance();
 
     std::cout << "Welcome to Perun!" << std::endl;
 
@@ -49,7 +49,7 @@ InterfaceType getInterfaceType(const std::string command)
 
 void message(const std::string message)
 {
-    std::cout << "> " << message << std::endl;
+    std::cout << message << std::endl;
 }
 
 void warning(const std::string message)

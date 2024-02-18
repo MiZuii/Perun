@@ -11,9 +11,9 @@ enum MaterialScores
 
     PAWN_SCORE = 100,
     KNIGHT_SCORE = 300,
-    BISHOP_SCORE = 300,
+    BISHOP_SCORE = 350,
     ROOK_SCORE = 500,
-    QUEEN_SCORE = 900
+    QUEEN_SCORE = 1000
 
 };
 

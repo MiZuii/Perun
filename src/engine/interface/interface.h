@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../utils/common/includes.h"
-#include "game.h"
+#include "engine.h"
 
 enum InterfaceType
 {
@@ -68,18 +68,17 @@ private:
     static void uciok();
     static void id(std::string engine_name, std::string engine_author);
     static void redyok();
-    static void bestmove();
-    static void info();
+    static void bestmove(Move_t best_move, Move_t ponder_move);
     static void option(std::string option_name, UciOptionType type,
         std::string default_val = "", std::string min = "", std::string max = "", std::string var = "");
 
 
     // misc
     static Move_t parse_move(std::string raw_move);
+    static std::string unparse_move(Move_t move);
     // static std::string unparse_move(Move_t move); // move this back here
 
 public:
-    static std::string unparse_move(Move_t move);
     void init() override; // used in constructor (declared outside for manual reset without creating new object)
     void make_command(std::string command) override;
     void end() override; // used in destructor
@@ -88,6 +87,7 @@ public:
     ~UciInterface();
 
     static bool debug_mode;
+    static std::chrono::milliseconds refresh_rate;
 };
 
 /* ---------------------------------- PERUN --------------------------------- */
