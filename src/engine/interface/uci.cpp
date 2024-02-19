@@ -302,8 +302,7 @@ void UciInterface::messenger(EngineResults &engr, std::mutex &endmtx)
         {
             message("info depth " + std::to_string(engr.current_max_depth) + 
                 " time " + std::to_string(search_dur.count()) +
-                " nodes " + std::to_string(engr.node_count) +
-                " score cp " + std::to_string(engr.best_score));
+                " nodes " + std::to_string(engr.node_count));
         }
     }
 }

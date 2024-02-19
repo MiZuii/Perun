@@ -8,6 +8,8 @@
 
 #define STARTING_POS "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
+class MoveOrder; // forward declaration of struct from ordering.h
+
 /* -------------------------------------------------------------------------- */
 /*                                  BITBOARDS                                 */
 /* -------------------------------------------------------------------------- */
@@ -75,6 +77,8 @@ template<bool WhiteMove>
 _ForceInline constexpr Piece enemyPiece(PieceType piece_type) {
     return convertPiece(piece_type, enemySide<WhiteMove>());
 }
+
+
 class Board
 {
 private:
@@ -142,8 +146,16 @@ private:
 public:
 
     std::vector<Move_t> moves;
+
+    /* --------------------------------- FRIENDS -------------------------------- */
+
     template<bool WhiteMove>
     friend int evaluate(Board &board);
+
+    friend MoveOrder;
+
+    /* ---------------------------------- MISC ---------------------------------- */
+
     _ForceInline Side sideToMove() {return _side_to_move;};
     _ForceInline bool getCheckers() {return _checkers;};
 
@@ -162,6 +174,8 @@ public:
     Move_t createAmbiguousMove(Move_t move);
 
     static bool validFEN(FEN_t fen);
+
+    /* ---------------------------------- DEBUG --------------------------------- */
 
     std::string toString() const;
     std::wstring toWString() const;

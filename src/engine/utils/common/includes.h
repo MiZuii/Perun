@@ -13,6 +13,7 @@
 #include <set>
 #include <numeric>
 #include <cctype>
+#include <unordered_map>
 
 #include <immintrin.h>
 // intrin.h for different versions of gcc

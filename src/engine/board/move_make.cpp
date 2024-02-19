@@ -41,11 +41,11 @@ Board &Board::makeMove(Move_t move)
         _fullmove_clock += 1;
     }
 
-    if(!GET_BIT(_piece_bitboards[source_piece], source_square))
-    {
-        /* Catches the case when queen was regarded as bishop/rook in a pin */
-        source_piece = getColoredQueen(_side_to_move);
-    }
+    // if(!GET_BIT(_piece_bitboards[source_piece], source_square))
+    // {
+    //     /* Catches the case when queen was regarded as bishop/rook in a pin */
+    //     source_piece = getColoredQueen(_side_to_move);
+    // }
 
     // move main piece
     movePiece(_side_to_move, source_square, target_square, source_piece);

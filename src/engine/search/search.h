@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../board/board_repr.h"
+#include "ordering.h"
 
 /* -------------------------------------------------------------------------- */
 /*                              SEARCH STRUCTURES                             */
@@ -26,7 +27,7 @@ struct SearchArgs
 {
     SearchLimitType search_type = TIME_LIM;
     Depth_t         depth_lim   = SEARCH_INF;
-    Depth_t         depth_start = 0;
+    Depth_t         depth_start = 1;
     int             time_lim = -1;
     int             node_lim = -1;
 
@@ -73,4 +74,4 @@ int quiesce(Board board, int alpha, int beta, RootMove &rm);
 /* ----------------------------- HELP FUNCTIONS ----------------------------- */
 
 int movetime_deduction(const SearchArgs args, const Side player);
-void update_engres(RootMove &rm, EngineResults &engr, std::mutex &engmtx);
+void update_engres(RootMove &rm, EngineResults &engr, std::mutex &engmtx, bool final = false);

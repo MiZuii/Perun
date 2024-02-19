@@ -330,7 +330,9 @@ void Board::_getMoves()
                     bitScan(legal_bishop_moves)
                     {
                         int legal_move_idx = bit_index(legal_bishop_moves);
-                        moves.push_back(createMove(bishop_idx, legal_move_idx, playerPiece<WhiteMove>(BISHOP), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx), false, false, false, false, false));
+                        moves.push_back(createMove(bishop_idx, legal_move_idx, 
+                            player_bishops & (1UL << bishop_idx) ? playerPiece<WhiteMove>(BISHOP) : playerPiece<WhiteMove>(QUEEN), 
+                            no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx), false, false, false, false, false));
                     }
                 }
             }
@@ -346,7 +348,9 @@ void Board::_getMoves()
                     bitScan(legal_bishop_moves)
                     {
                         int legal_move_idx = bit_index(legal_bishop_moves);
-                        moves.push_back(createMove(bishop_idx, legal_move_idx, playerPiece<WhiteMove>(BISHOP), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx), false, false, false, false, false));
+                        moves.push_back(createMove(bishop_idx, legal_move_idx, 
+                            player_bishops & (1UL << bishop_idx) ? playerPiece<WhiteMove>(BISHOP) : playerPiece<WhiteMove>(QUEEN), 
+                            no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx), false, false, false, false, false));
                     }
                 }
             }
@@ -368,7 +372,9 @@ void Board::_getMoves()
                     bitScan(legal_rook_moves)
                     {
                         int legal_move_idx = bit_index(legal_rook_moves);
-                        moves.push_back(createMove(rook_idx, legal_move_idx, playerPiece<WhiteMove>(ROOK), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx), false, false, false, true, false));
+                        moves.push_back(createMove(rook_idx, legal_move_idx, 
+                            player_rooks & (1UL << rook_idx) ? playerPiece<WhiteMove>(ROOK) : playerPiece<WhiteMove>(QUEEN), 
+                            no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx), false, false, false, true, false));
                     }
                 }
             }
@@ -384,7 +390,9 @@ void Board::_getMoves()
                     bitScan(legal_rook_moves)
                     {
                         int legal_move_idx = bit_index(legal_rook_moves);
-                        moves.push_back(createMove(rook_idx, legal_move_idx, playerPiece<WhiteMove>(ROOK), no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx), false, false, false, true, false));
+                        moves.push_back(createMove(rook_idx, legal_move_idx, 
+                            player_rooks & (1UL << rook_idx) ? playerPiece<WhiteMove>(ROOK) : playerPiece<WhiteMove>(QUEEN),
+                            no_piece, GET_BIT(_occ_bitboards[enemySide<WhiteMove>()], legal_move_idx), false, false, false, true, false));
                     }
                 }
             }

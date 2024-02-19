@@ -61,12 +61,12 @@ enum Piece {
 };
 
 constexpr PieceType pieces[6] = {KING, QUEEN, BISHOP, KNIGHT, ROOK ,PAWN};
-constexpr Piece whitePieces[6] = {K, Q, B, N, R, P};
-constexpr Piece blackPieces[6] = {k, q, b, n, r, p};
+constexpr std::array<Piece, 6> whitePieces = {K, Q, B, N, R, P};
+constexpr std::array<Piece, 6> blackPieces = {k, q, b, n, r, p};
 constexpr Piece allPieces[12] = {K, Q, B, N, R, P, k, q, b, n, r, p};
 
 
-constexpr const Piece *getColoredPieces(Side sd)
+constexpr std::array<Piece, 6> getColoredPieces(Side sd)
 {
     if (Side::WHITE == sd)
     {

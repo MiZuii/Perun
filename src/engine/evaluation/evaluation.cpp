@@ -2,13 +2,18 @@
 
 _ForceInline int materialDiff(U64 (&piece_bb)[12], PieceType piece_to_calc)
 {
-    return bit_count(piece_bb[playerPiece<WHITE>(piece_to_calc)]) -
-        bit_count(piece_bb[playerPiece<BLACK>(piece_to_calc)]);
+    return bit_count(piece_bb[playerPiece<true>(piece_to_calc)]) -
+        bit_count(piece_bb[playerPiece<false>(piece_to_calc)]);
 }
 
 template<bool WhiteMove>
 int evaluate(Board &board)
 {
+
+    if(board.moves.empty())
+    {
+        return board.getCheckers() ? ( WhiteMove ? -EVAL_INF : EVAL_INF) : 0;
+    }
 
     // non relative
     const ScoreVal_t material_score = 

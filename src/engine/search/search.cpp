@@ -7,7 +7,7 @@ void search(std::stop_token stok, Board board, const std::vector<Move_t> move_hi
 {
     // init
     board.getMoves();
-    std::vector<std::jthread>   root_threads;
+    std::vector<std::jthread>   *root_threads               = new std::vector<std::jthread>;
     std::atomic<int>            completion_counter          = 0;
     const unsigned int          number_of_search_threads    = board.moves.size();
     const Side                  player                      = board.sideToMove();
@@ -28,14 +28,20 @@ void search(std::stop_token stok, Board board, const std::vector<Move_t> move_hi
     // init searching threads
     for(Move_t move : board.moves)
     {
-        root_threads.push_back(std::jthread(_search, Board(board, move), 
+        root_threads->push_back(std::jthread(_search, Board(board, move), 
             move, std::ref(engr) , std::ref(engmtx), args, player, std::ref(completion_counter),
             std::ref(move_hist)));
     }
 
     // controll loop
-    while(!stok.stop_requested())
+    while(true)
     {
+        if(stok.stop_requested())
+        {
+            delete root_threads;
+            break;
+        }
+
         if(number_of_search_threads <= completion_counter.load())
         {
             break;
@@ -45,7 +51,7 @@ void search(std::stop_token stok, Board board, const std::vector<Move_t> move_hi
             (std::chrono::steady_clock::now() - loc_start).count() >= args.time_lim &&
             args.search_type == TIME_LIM)
         {
-            break;
+            Engine::stop();
         }
 
         std::this_thread::sleep_for(0ms);
@@ -77,18 +83,21 @@ void _search(std::stop_token stok, Board board, Move_t move,
     // search
     for(int d=loc_depth_start; d < loc_depth_lim; d++)
     {
+        ScoreVal_t lscore   = negamax_ab(board, -EVAL_INF, EVAL_INF, d, rm);
+
+        // here because if negamax exits with stop token it returns 0 !!!
         if(stok.stop_requested())
         {
             break;
         }
 
-        ScoreVal_t lscore   = -negamax_ab(board, -EVAL_INF, EVAL_INF, d, rm);
-        rm.score            = lscore;
+        rm.score            = board.sideToMove() == WHITE ? lscore : -lscore;
         rm.eval_depth       = d;
 
         update_engres(rm, engr, engmtx);
     }
 
+    update_engres(rm, engr, engmtx, true);
     comp_counter++;
 }
 
@@ -121,9 +130,9 @@ int negamax_ab(Board board, int alpha, int beta, int depth_left, RootMove &rm)
 
         if( local_score >= beta)
         {
-            return beta; // cutof (hard/soft base on the current negamax node)
+            return beta;
         }
-        if( local_score > alpha )
+        if( alpha < local_score )
         {
             alpha = local_score;
         }
@@ -133,16 +142,17 @@ int negamax_ab(Board board, int alpha, int beta, int depth_left, RootMove &rm)
 
 int quiesce(Board board, int alpha, int beta, RootMove &rm)
 {
+    if(rm.stok.stop_requested())
+    {
+        return 0;
+    }
+    
     // generate moves for current node
     board.getMoves();
-
-    if(board.moves.empty())
-    {
-        return board.getCheckers() ? -EVAL_INF : 0;
-    }
+    std::sort(board.moves.begin(), board.moves.end(), MoveOrder(board));
 
     rm.nc++;
-    int stand_pat = board.sideToMove() == WHITE ? -evaluate<true>(board) : evaluate<false>(board);
+    int stand_pat = board.sideToMove() == WHITE ? evaluate<true>(board) : -evaluate<false>(board);
 
     if( stand_pat >= beta )
     {
@@ -155,7 +165,7 @@ int quiesce(Board board, int alpha, int beta, RootMove &rm)
 
     for(Move_t move : board.moves)
     {
-        if(!getCaptureFlag(move))
+        if(!getCaptureFlag(move) && !board.getCheckers())
         {
             continue;
         }
@@ -182,17 +192,17 @@ int movetime_deduction(const SearchArgs args, const Side player)
     return 5000;
 }
 
-void update_engres(RootMove &rm, EngineResults &engr, std::mutex &engmtx)
+void update_engres(RootMove &rm, EngineResults &engr, std::mutex &engmtx, bool final)
 {
     std::lock_guard<std::mutex> end_guard(engmtx);
 
     bool new_data_flag = false;
 
     // score update
-    if((rm.player == WHITE ? rm.score > engr.best_score : rm.score > -engr.best_score) || engr.best_move == 0)
+    if(final && (((rm.player == WHITE) ? (rm.score > engr.best_score) : (rm.score < engr.best_score)) || engr.best_move == 0))
     {
         engr.best_move  = rm.root_move;
-        engr.best_score = rm.player == WHITE ? rm.score : -rm.score;
+        engr.best_score = rm.score;
         new_data_flag   = true;
     }
 
