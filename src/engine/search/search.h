@@ -2,6 +2,7 @@
 
 #include "../board/board_repr.h"
 #include "ordering.h"
+#include "../tt/tt.h"
 
 /* -------------------------------------------------------------------------- */
 /*                              SEARCH STRUCTURES                             */
@@ -47,15 +48,25 @@ struct MoveStack
 
 struct RootMove
 {
+    // basic
     Move_t      root_move;
     ScoreVal_t  score;
     Depth_t     eval_depth;
 
+    // killer and history moves
+    static constexpr Depth_t    MAX_PLY = 64;
+    static constexpr int        KMS_NUM = 2;
+    int                         latest_km_index;
+    std::array<std::array<Move_t, MAX_PLY>, KMS_NUM> killer_moves;
+
+    // idk
     MoveStack   mstack;
 
+    // stats
     int         nc;
     const Side  player;
 
+    // termination
     const std::stop_token &stok;
 };
 
@@ -66,10 +77,10 @@ struct RootMove
 void search(std::stop_token stok, Board board, const std::vector<Move_t> move_hist, 
     SearchArgs args, EngineResults &engr, std::mutex &engmtx);
 void _search(std::stop_token stok, Board board, Move_t move, EngineResults &engr, 
-    std::mutex &engmtx, SearchArgs args, const Side player, std::atomic<int> &comp_counter,
+    std::mutex &engmtx, SearchArgs args, const Side player, std::atomic<unsigned int> &comp_counter,
     const std::vector<Move_t> &move_hist);
 int negamax_ab(Board board, int alpha, int beta, int depth_left, RootMove &rm);
-int quiesce(Board board, int alpha, int beta, RootMove &rm);
+int quiesce(Board board, int alpha, int beta, Depth_t depth_left, RootMove &rm);
 
 /* ----------------------------- HELP FUNCTIONS ----------------------------- */
 

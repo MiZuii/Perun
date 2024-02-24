@@ -13,6 +13,7 @@
 #include <set>
 #include <numeric>
 #include <cctype>
+#include <cstdlib>
 #include <unordered_map>
 
 #include <immintrin.h>

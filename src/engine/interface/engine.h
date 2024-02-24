@@ -30,6 +30,7 @@ public:
     void operator=(const Engine &other) = delete;
 
     static Engine* getInstance();
+    static void init(U64 seed = UINT64_C(17726882317898764257));
     static void destroy();
 
     // main methods for game reseting.
@@ -38,13 +39,14 @@ public:
     static void setPosition(FEN_t fen); // setPosition resets the moves
     static void setMoves(std::vector<Move_t> moves);
     static void setSearchArgs(SearchArgs args);
+
     static void start();
     static void stop();
+
     static EngineResults &getEngineResultsStruct();
     static std::mutex &getEngineResultsMutex();
     static void cleanEngineResults();
 
     static bool engine_initialized;
     static bool engine_running;
-
 };

@@ -9,7 +9,6 @@ _ForceInline int materialDiff(U64 (&piece_bb)[12], PieceType piece_to_calc)
 template<bool WhiteMove>
 int evaluate(Board &board)
 {
-
     if(board.moves.empty())
     {
         return board.getCheckers() ? ( WhiteMove ? -EVAL_INF : EVAL_INF) : 0;

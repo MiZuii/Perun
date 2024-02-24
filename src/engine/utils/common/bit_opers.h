@@ -3,10 +3,18 @@
 #include "types.h"
 #include "includes.h"
 
-#define GET_BIT(board, x) ((board) & (1UL << (x)))
-#define CLEAR_BIT(board, x) board = ((board) & ~(1UL << (x)))
-#define TOGGLE_BIT(board, x) board = ((board) ^ (1UL << (x)))
-#define SET_BIT(board, x) board = (((board) & ~(1UL << (x))) ^ (1UL << (x)))
+// indexed operations
+#define GET_BIT(board, x)               ((board) & (1UL << (x)))
+#define CLEAR_BIT(board, x)     board = ((board) & ~(1UL << (x)))
+#define TOGGLE_BIT(board, x)    board = ((board) ^ (1UL << (x)))
+#define SET_BIT(board, x)       board = (((board) & ~(1UL << (x))) ^ (1UL << (x)))
+
+// binary operations
+#define GET_BITS(board, bits)               ((board) & (bits))
+#define CLEAR_BITS(board, bits)     board = ((board) & ~(bits))
+#define TOGGLE_BITS(board, bits)    board = ((board) & (bits))
+#define SET_BITS(board, bits)       board = (((board) & ~(bits)) ^ (bits))
+
 #define LS1B(x) ((x) & (-(x)))
 
 enum Columns
@@ -98,5 +106,21 @@ _ForceInline int bit_count(uint64_t bitboard)
 #endif
 }
 
-constexpr uint64_t cols_get[8] = {H_COL, G_COL, F_COL, E_COL, D_COL, C_COL, B_COL, A_COL};
-constexpr uint64_t rows_get[8] = {ROW_1, ROW_2, ROW_3, ROW_4, ROW_5, ROW_6, ROW_7, ROW_8};
+constexpr uint64_t cols_get[8]  = {H_COL, G_COL, F_COL, E_COL, D_COL, C_COL, B_COL, A_COL};
+constexpr uint64_t rows_get[8]  = {ROW_1, ROW_2, ROW_3, ROW_4, ROW_5, ROW_6, ROW_7, ROW_8};
+constexpr uint64_t rows_up[8]   = {ROW_2 | ROW_3,
+                                   ROW_3 | ROW_4,
+                                   ROW_4 | ROW_5,
+                                   ROW_5 | ROW_6,
+                                   ROW_6 | ROW_7,
+                                   ROW_7 | ROW_8,
+                                   ROW_8,
+                                   0};
+constexpr uint64_t rows_down[8] = {0,
+                                   ROW_1,
+                                   ROW_1 | ROW_2,
+                                   ROW_2 | ROW_3,
+                                   ROW_3 | ROW_4,
+                                   ROW_4 | ROW_5,
+                                   ROW_5 | ROW_6,
+                                   ROW_6 | ROW_7};

@@ -32,6 +32,16 @@ Engine *Engine::getInstance()
     return _instance;
 }
 
+void Engine::init(U64 seed)
+{
+    /* Init first creates the singleton global object of an engine */
+    Engine::getInstance();
+
+    /* next the transposition table arrays are generated */
+    XORSHIFT::init(seed);
+    fill_hash_arrays();
+}
+
 void Engine::destroy()
 {
     if( nullptr == _instance )

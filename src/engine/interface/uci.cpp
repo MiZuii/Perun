@@ -2,7 +2,7 @@
 
 std::thread UciInterface::_messenger_thread;
 bool UciInterface::debug_mode = false;
-std::chrono::milliseconds UciInterface::refresh_rate = 100ms;
+std::chrono::milliseconds UciInterface::refresh_rate = 500ms;
 std::map<std::string, std::function<void(std::vector<std::string> &)>> UciInterface::commands_map = {
     {"uci", [](std::vector<std::string> &args) -> void { uci(args); }},
     {"isready", [](std::vector<std::string> &args) -> void { isready(args); }},
@@ -196,7 +196,7 @@ void UciInterface::go(std::vector<std::string> &args)
     if(has_arg("movetime", args))
     {
         args_fill.search_type = TIME_LIM;
-        args_fill.depth_lim = get_arg("movetime", args);
+        args_fill.time_lim = get_arg("movetime", args);
     }
     // end of main args precedence
 
@@ -230,7 +230,6 @@ void UciInterface::ponderhit(std::vector<std::string> &args)
 
 void UciInterface::quit(std::vector<std::string> &args)
 {
-    Engine::destroy();
     if(_messenger_thread.joinable())
     {
         _messenger_thread.join();

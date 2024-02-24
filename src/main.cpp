@@ -1,17 +1,17 @@
-#include "engine/utils/common/includes.h"
-#include "engine/utils/common/types.h"
-#include "engine/utils/common/bit_opers.h"
+#include "engine/interface/interface.h"
 
 #include "engine/utils/perft/perft.h"
 
-#include "engine/interface/interface.h"
-
 int main(void) {
-#if DEBUG
 
-    // perft(STARTING_POS, 6);
+    std::atexit(TT::destroy);
+    std::atexit(Engine::destroy);
+
+    Engine::init();
+    TT::init();
+
     run();
 
-#endif
+    // perft(STARTING_POS, 6);
     return 0;
 }

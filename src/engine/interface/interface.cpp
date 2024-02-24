@@ -2,9 +2,6 @@
 
 void run()
 {
-    // init first instance of game
-    Engine::getInstance();
-
     std::cout << "Welcome to Perun!" << std::endl;
 
     // setup interface and deafult init

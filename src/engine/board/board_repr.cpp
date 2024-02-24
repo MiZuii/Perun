@@ -3,56 +3,11 @@
 #include "../utils/common/bit_opers.h"
 
 #include "board_repr.h"
+#include "../tt/tt.h"
 
-#if DEBUG
-
-BitBoardWrap::BitBoardWrap() : _bit_board(0) {}
-
-BitBoardWrap::BitBoardWrap(U64 board) : _bit_board(board) {}
-
-std::string BitBoardWrap::bitboard_repr(U64 bb)
-{
-    return BitBoardWrap(bb).toString();
-}
-
-std::string BitBoardWrap::toString() const
-{
-    std::string ret;
-
-    for (int i = 7; i > -1; i--)
-    {
-        ret += std::to_string(i + 1);
-
-        for (int j = 7; j > -1; j--)
-        {
-
-            if (GET_BIT(this->_bit_board, (i * 8 + j)))
-            {
-                ret += " 1";
-            }
-            else
-            {
-                ret += " 0";
-            }
-        }
-        ret += "\n";
-    }
-
-    ret += "  a b c d e f g h\n";
-
-    return ret;
-}
-
-std::ostream &operator<<(std::ostream &os, const BitBoardWrap &obj)
-{
-    os << obj.toString();
-    return os;
-}
-
-#endif
-
-
-
+/* -------------------------------------------------------------------------- */
+/*                         CONSTRUCTORS AND OPERATORS                         */
+/* -------------------------------------------------------------------------- */
 
 Board::Board() : Board(STARTING_POS) {}
 
@@ -187,6 +142,9 @@ Board::Board(FEN_t fen)
 
         tokeni++;
     }
+
+    /* Init positio hash key */
+    initHash();
 }
 
 Board::Board(const Board &board, Move_t move)
@@ -200,6 +158,9 @@ Board::Board(const Board &board)
     *this = board;
 }
 
+/* TODO:
+consider moving the moves vector here
+*/
 Board::Board(Board &&board)
 {
     *this = board;
@@ -207,22 +168,66 @@ Board::Board(Board &&board)
 
 Board &Board::operator=(const Board &other)
 {
-    _side_to_move = other._side_to_move;
-    _castle_rights = other._castle_rights;
-    _en_passant = other._en_passant;
+    _side_to_move   = other._side_to_move;
+    _castle_rights  = other._castle_rights;
+    _en_passant     = other._en_passant;
     _halfmove_clock = other._halfmove_clock;
     _fullmove_clock = other._fullmove_clock;
+    _hash           = other._hash;
 
     std::copy(other._piece_bitboards, other._piece_bitboards + 12, _piece_bitboards);
     std::copy(other._occ_bitboards, other._occ_bitboards + 3, _occ_bitboards);
-    
+
     return *this;
 }
 
-void Board::clearMoves()
+/* -------------------------------------------------------------------------- */
+/*                                    HASH                                    */
+/* -------------------------------------------------------------------------- */
+
+void Board::initHash()
 {
-    moves.clear();
+    /* Xoring pieces into hash var */
+    for(Piece p : allPieces)
+    {
+        U64 p_to_scan = _piece_bitboards[p];
+
+        bitScan(p_to_scan)
+        {
+            int pidx = bit_index(p_to_scan);
+            _hash ^= piece_hash_keys[p][pidx];
+        }
+    }
+
+    /* Xoring en passant */
+    if(_en_passant != NO_SQ)
+    {
+        _hash ^= en_passant_hash_keys[_en_passant];
+    }
+
+    /* Xoring castling rights */
+    _hash ^= castling_hash_keys[_castle_rights];
+
+    /* Xor side to move state */
+    if(_side_to_move == WHITE)
+    {
+        _hash ^= side_hash_key;
+    }
 }
+
+U64 Board::getHash()
+{
+    return _hash;
+}
+
+int Board::getPositionDepth()
+{
+    return _fullmove_clock + _side_to_move;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                    DEBUG                                   */
+/* -------------------------------------------------------------------------- */
 
 Piece Board::charToPiece(char pieceChar)
 {
@@ -688,6 +693,10 @@ std::string Board::moveToStringShort(Move_t move)
     ret += "/";
     ret += Board::intToField(getTargetSquare(move));
     ret += Board::intToRank(getTargetSquare(move));
+    if(getPromotionPiece(move) != no_piece)
+    {
+        ret += Board::PieceToChar(getPromotionPiece(move));
+    }
     return ret;
 }
 
@@ -695,3 +704,54 @@ bool Board::validFEN(FEN_t fen)
 {
     return std::regex_match(fen, std::basic_regex(FEN_REGEX));
 }
+
+/* -------------------------------------------------------------------------- */
+/*                                BITBOARD WRAP                               */
+/* -------------------------------------------------------------------------- */
+
+#if DEBUG
+
+BitBoardWrap::BitBoardWrap() : _bit_board(0) {}
+
+BitBoardWrap::BitBoardWrap(U64 board) : _bit_board(board) {}
+
+std::string BitBoardWrap::bitboard_repr(U64 bb)
+{
+    return BitBoardWrap(bb).toString();
+}
+
+std::string BitBoardWrap::toString() const
+{
+    std::string ret;
+
+    for (int i = 7; i > -1; i--)
+    {
+        ret += std::to_string(i + 1);
+
+        for (int j = 7; j > -1; j--)
+        {
+
+            if (GET_BIT(this->_bit_board, (i * 8 + j)))
+            {
+                ret += " 1";
+            }
+            else
+            {
+                ret += " 0";
+            }
+        }
+        ret += "\n";
+    }
+
+    ret += "  a b c d e f g h\n";
+
+    return ret;
+}
+
+std::ostream &operator<<(std::ostream &os, const BitBoardWrap &obj)
+{
+    os << obj.toString();
+    return os;
+}
+
+#endif

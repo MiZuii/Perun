@@ -11,10 +11,11 @@ typedef uint32_t U32;
 typedef uint16_t U16;
 typedef uint8_t U8;
 
-typedef int32_t ScoreVal_t;
+typedef int16_t ScoreVal_t;
 
 // also denotes ply (the engine works only on ply values not full moves)
-typedef int32_t Depth_t;
+typedef uint8_t Depth_t;
+static constexpr Depth_t DEPTH_TYPE_MAX = UINT8_MAX;
 
 typedef std::string FEN_t;
 
@@ -309,3 +310,15 @@ enum SearchLimitType
     NO_LIM
 };
 
+/* -------------------------------------------------------------------------- */
+/*                                   HASHING                                  */
+/* -------------------------------------------------------------------------- */
+
+enum NodeType
+{
+    EXACT,
+    ALPHA,
+    BETA
+};
+
+static constexpr Depth_t UNKNOWN_VAL = DEPTH_TYPE_MAX;

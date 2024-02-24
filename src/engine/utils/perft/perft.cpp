@@ -20,7 +20,7 @@ void perft(FEN_t fen, int depth)
 {
     std::cout << "Performing perft for position: " << fen << "\n" << std::endl;
 
-    U32 count = 0;
+    U64 count = 0;
     U32 sub_count = 0;
     int64_t time = 0;
     double speed = 0;
