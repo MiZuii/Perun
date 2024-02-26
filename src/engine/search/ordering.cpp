@@ -1,13 +1,13 @@
 #include "ordering.h"
 #include "search.h"
 
-MoveOrder::MoveOrder(Board &board, RootMove &rm, int d) : _board(board), _rm(rm), _d(d)
+MoveOrder::MoveOrder(Board &board, SearchThread &st, int d) : _board(board), _st(st), _d(d)
 {
     /* Reserve space for all moves compare values */
     _mvalmap.reserve(_board.moves.size());
 
     /* Get entry from transposition table previous generation */
-    TTItem *probe = TT::raw_probe(board, rm.eval_depth - 1);
+    TTItem *probe = TT::raw_probe(board, st.generation - 1);
     Move_t best_move = 0;
     if( nullptr != probe && probe->type == EXACT )
     {
@@ -33,14 +33,14 @@ MoveOrder::MoveOrder(Board &board, RootMove &rm, int d) : _board(board), _rm(rm)
         int m_val = mvv_lva[getSourcePiece(move)][p];
 
         /* Calculate val based on the killermoves */
-        if( !getCaptureFlag(move) && _d <= RootMove::MAX_PLY)
+        if( !getCaptureFlag(move) && _d <= SearchThread::MAX_PLY)
         {
-            for(int i=RootMove::KMS_NUM; i > 0; i--)
+            for(int i=SearchThread::KMS_NUM; i > 0; i--)
             {
-                if(_rm.killer_moves[(_rm.latest_km_index + i)%RootMove::KMS_NUM][_d-1] == move)
+                if(_st.killer_moves[(_st.latest_km_index + i)%SearchThread::KMS_NUM][_d-1] == move)
                 {
                     // killer move was found -> assign value based on the move age
-                    m_val += (50 / RootMove::KMS_NUM)*(i - 1) + 50;
+                    m_val += (50 / SearchThread::KMS_NUM)*(i - 1) + 50;
                     break;
                 }
             }

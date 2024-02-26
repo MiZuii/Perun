@@ -55,6 +55,7 @@ public:
     static TTItem*      raw_probe(Board &board, Depth_t gen);
     static void         write(Board &board, ScoreVal_t score, NodeType nt, Move_t bm, Depth_t gen);
     static void         pv_probe(Board board, Depth_t gen, std::vector<Move_t> &pvv);
+    static bool         is_pv(Board board, Depth_t gen);
 
 };
 

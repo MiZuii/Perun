@@ -3,7 +3,7 @@
 #include "../board/board_repr.h"
 
 // forward declaration of RootMove struct
-struct RootMove;
+struct SearchThread;
 
 constexpr int mvv_lva[12][13] = {
     {0  , 0  , 0  , 0  , 0  , 0  , 0  , 501, 401, 301, 201, 101, 0},
@@ -25,7 +25,7 @@ class MoveOrder
 {
 private:
     Board &_board;
-    RootMove &_rm;
+    SearchThread &_st;
     int _d;
     std::unordered_map<Move_t, int> _mvalmap;
 
@@ -37,7 +37,7 @@ public:
     to constructor must already have generated moves on which the class will create
     target piece lookup(a hashmap) */
 
-    MoveOrder(Board &board, RootMove &rm, int d);
+    MoveOrder(Board &board, SearchThread &rm, int d);
 
     // operator for std::sort
     bool operator() (const Move_t& a, const Move_t& b);

@@ -77,7 +77,7 @@ void TT::write(Board &board, ScoreVal_t score, NodeType nt, Move_t bm, Depth_t g
     probe->gen = gen % 32;
 }
 
-void TT::pv_probe(Board board, Depth_t gen, std::vector<Move_t> &pvv)
+void TT::pv_probe(Board board, Depth_t gen, std::vector<Move_t> &pv)
 {
     Board b{board};
 
@@ -101,7 +101,7 @@ void TT::pv_probe(Board board, Depth_t gen, std::vector<Move_t> &pvv)
                 continue;
             }
 
-            if(probe->type == EXACT && probe->score > pv_score)
+            if(probe->type == EXACT && probe->score >= pv_score)
             {
                 pv_move = move;
                 pv_score = probe->score;
@@ -114,9 +114,22 @@ void TT::pv_probe(Board board, Depth_t gen, std::vector<Move_t> &pvv)
         }
 
         // push new pv move and go one iter forward
-        pvv.push_back(pv_move);
+        pv.push_back(pv_move);
         b.makeMove(pv_move);
     }
+}
+
+bool TT::is_pv(Board board, Depth_t gen)
+{
+    TTItem *probe = &TT::_tt[board.getHash() % TT::_size];
+
+    if( probe->key != board.getHash() ||
+        probe->gen != (gen % 32))
+    {
+        return false;
+    }
+    
+    return probe->pv;
 }
 
 /* ----------------------------- HASH KEYS FILL ----------------------------- */
