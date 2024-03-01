@@ -2,6 +2,10 @@
 
 #include "../interface/interface.h"
 
+/* -------------------------------------------------------------------------- */
+/*                                   SEARCH                                   */
+/* -------------------------------------------------------------------------- */
+
 /* Main search function. Creates the search threads and needed structures and
 loops infinitly managind search end */
 void search(std::stop_token stok, Board board, const std::vector<Move_t> move_hist, 
@@ -11,6 +15,9 @@ void search(std::stop_token stok, Board board, const std::vector<Move_t> move_hi
     const Side player    = board.sideToMove();
     const auto loc_start = std::chrono::steady_clock::now();
     constexpr int workers_num = 8; // should be deduced from cpu information
+
+    /* Clear SearchThread static variables */
+    SearchThread::clear_statics();
 
     /* Write search start time to the results */
     {
@@ -24,24 +31,31 @@ void search(std::stop_token stok, Board board, const std::vector<Move_t> move_hi
         args.time_lim = movetime_deduction(args, player);
     }
 
+    /* Create workers vector */
+    std::vector<dthread> *workers = new std::vector<dthread>();
+    for(int worker_id=0; worker_id < workers_num; worker_id++)
+    {
+        workers->push_back(dthread(SearchThread::create_worker));
+    }
+
     /* Run main search thread */
-    const auto mthread = new SearchThread<true>();
-    mthread->run();
+    const dthread *mthread = new dthread(SearchThread::create_main,
+                                         board, args, std::ref(engr), std::ref(engmtx));
     
     while(true)
     {
-        /* If stop was requested (externally or by internal time controll) delete
-        the root threads vector which causes all search threads to stop and increment
-        completion_counter. */
         if(stok.stop_requested())
         {
+            SearchThread::signal_end();
+            delete workers;
             delete mthread;
             break;
         }
 
         /* If all threads finished searching end the main loop */
-        if( mthread->isFinished() )
+        if( SearchThread::finished() )
         {
+            delete workers;
             delete mthread;
             break;
         }
@@ -59,11 +73,9 @@ void search(std::stop_token stok, Board board, const std::vector<Move_t> move_hi
     }
 
     /* Update necessery flags for protocol thread */
-    {
-        std::lock_guard<std::mutex> end_guard(engmtx);
-        engr.finished = true;
-    }
-
+    std::lock_guard end_guard(engmtx);
+    engr.finished = true;
+    engr.new_data.notify_all();
     Engine::engine_running = false;
 }
 
@@ -72,9 +84,10 @@ void search(std::stop_token stok, Board board, const std::vector<Move_t> move_hi
 /* -------------------------------------------------------------------------- */
 
 SplitPoint::SplitPoint(SearchThread &owner, Board &board, ScoreVal_t alpha, ScoreVal_t beta, Depth_t depth_left) :
-    _owner(owner), board(board), alpha(alpha), beta(beta), depth_left(depth_left), _last_todo_idx(0)
+    _owner(owner), _last_todo_idx(0), board(board), alpha(alpha), beta(beta), depth_left(depth_left)
 {
-    Move_t pv_move = _owner.pv->at(board.getPositionDepth()-_owner.pv_init_depth);
+    Move_t pv_move = (_owner.pv->empty() || board.getPositionDepth()-_owner.pv_init_depth >= _owner.pv->size()) ?
+        board.moves[0] : _owner.pv->at(board.getPositionDepth()-_owner.pv_init_depth);
     _moves.reserve(board.moves.size()-1);
 
     for(auto move : board.moves)
@@ -131,19 +144,27 @@ void SearchThread::iterate(Board board, SearchArgs args, EngineResults &engr, st
     // initiate search type and parameters based on the SearchArgs information
     const int loc_depth_lim     = args.search_type == DEPTH_LIM ? args.depth_lim : SEARCH_INF;
     const int loc_depth_start   = args.depth_start;
-    SearchThread::pv_init_depth = board.getPositionDepth();
-    std::vector<Move_t>           pv;
+    std::unique_lock              lock(mutex);
+    pv_init_depth               = board.getPositionDepth();
+    std::vector<Move_t>           lpv;
+    pv                          = &lpv;
 
     
     /* Iterative deepening search loop */
     for(int d=loc_depth_start; d < loc_depth_lim; d++)
     {
+        std::cerr << "new iter-----------\n";
         /* Init this depth search */
         SearchThread::generation = d;
-        SearchThread::pv = &pv;
         SearchThread::split_points.clear();
+
+        /* Propagate pv onto the TT */
+        TT::pv_propagate(board, d, lpv);
         
+        lock.unlock();
         ScoreVal_t lscore = negamax(board, -EVAL_INF, EVAL_INF, d);
+        lscore = board.sideToMove() == WHITE ? lscore : -lscore;
+        lock.lock();
 
         /* Check the search stop condition */
         if(over)
@@ -152,13 +173,13 @@ void SearchThread::iterate(Board board, SearchArgs args, EngineResults &engr, st
         }
 
         /* Retrive the pv from tt */
-        pv.clear();
-        TT::pv_probe(board, d, pv);
+        lpv.clear();
+        TT::pv_probe(board, d, lpv);
+        update_engres(lpv, lscore, d, engr, engmtx);
     }
 
-    /* Finally update thre search results and increment completion counter
-    for proper search termination */
-    update_engres(rm, engr, engmtx, true);
+    lock.unlock(); // signal end uses the mutex!
+    SearchThread::signal_end();
 }
 
 void SearchThread::create_worker()
@@ -167,19 +188,43 @@ void SearchThread::create_worker()
     this_thread.work();
 }
 
-void SearchThread::create_main()
+void SearchThread::create_main(Board board, SearchArgs args, EngineResults &engr, std::mutex &engmtx)
 {
     SearchThread this_thread;
-    this_thread.iterate();
+    this_thread.iterate(board, args, engr, engmtx);
+}
+
+void SearchThread::signal_end()
+{
+    std::lock_guard lg(mutex);
+    idle.notify_all();
+    over = true;
+}
+
+unsigned int SearchThread::probe_nc()
+{
+    std::lock_guard lg(mutex);
+    return nc;
+}
+
+void SearchThread::clear_statics()
+{
+    nc            = 0;
+    pv            = nullptr;
+    pv_init_depth = 0;
+    generation    = 0;
+    over          = false;
+
+    split_points.clear();
 }
 
 void SearchThread::work()
 {
+    std::unique_lock lock(mutex);
+
     while(true)
     {
-        std::unique_lock<std::mutex> lock{mutex};
         bool work_done_flag = false;
-        ScoreVal_t result = 0;
 
         if(!split_points.empty())
         {
@@ -189,26 +234,36 @@ void SearchThread::work()
 
             if((ms = sp.get_work()) != nullptr)
             {
-                lock.release();
+                lock.unlock();
                 res = -negamax({sp.board, ms->move}, 
-                                -sp.beta, -sp.alpha, 
+                                -sp.beta, -sp.alpha,
                                 sp.depth_left-1);
                 lock.lock();
                 sp.work_done(ms, res);
+
+                // node count update
+                nc += lnc;
+                lnc = 0;
+
                 work_done_flag = true;
             }
         }
 
-        if(!work_done_flag)
+        if(!work_done_flag && !over)
         {
             idle.wait(lock);
+        }
+
+        if(over)
+        {
+            break;
         }
     }
 }
 
 ScoreVal_t SearchThread::negamax(Board board, ScoreVal_t alpha, ScoreVal_t beta, Depth_t depth_left)
 {
-    nc++; // node count increment
+    lnc++; // node count increment
 
     /* Return if search is terminated */
     if(over)
@@ -239,6 +294,7 @@ ScoreVal_t SearchThread::negamax(Board board, ScoreVal_t alpha, ScoreVal_t beta,
 
     if(TT::is_pv(board, generation))
     {
+        std::cerr << "new splitpoint>>>>>>>>>>>>>>>>>>>>>>>>\n";
         /* Initiate split point */
         std::unique_lock lock(mutex);
         split_points.emplace_back(*this, board, alpha, beta, depth_left);
@@ -256,13 +312,14 @@ ScoreVal_t SearchThread::negamax(Board board, ScoreVal_t alpha, ScoreVal_t beta,
         idle.notify_all();
 
         /* Create node type variable for remembering which node will be writen to tt */
-        NodeType nt = ALPHA;
-        Move_t bm   = 0;
+        NodeType nt        = ALPHA;
+        Move_t bm          = 0;
+        ScoreVal_t ret_val = sp.alpha;
 
         /* Loop updating values from workers */
         while(true)
         {
-            if(!sp.finished())
+            if(sp.finished() || over)
             {
                 break;
             }
@@ -286,24 +343,36 @@ ScoreVal_t SearchThread::negamax(Board board, ScoreVal_t alpha, ScoreVal_t beta,
                         killer_moves[latest_km_index][depth_left-1] = ms.move;
                     }
 
-                    TT::write(board, sp.beta, BETA, ms.move, generation);
-                    return sp.beta;
+                    TT::write(board, sp.beta, false, BETA, ms.move, generation);
+                    ret_val = sp.beta;
+                    bm = 0;
+                    break;
                 }
                 if( sp.alpha < ms.score )
                 {
                     nt       = EXACT;
                     bm       = ms.move;
                     sp.alpha = ms.score;
+                    ret_val  = ms.score;
                 }
+
+                /* Check that the ms was reviewed */
+                ms.state = DONE;
             }
         }
 
         if( bm != 0)
         {
             // the principal variation changed
-            TT::write(board, sp.alpha, nt, bm, generation);
+            TT::write(board, sp.alpha, true, nt, bm, generation);
         }
-        return sp.alpha;
+
+        /* update nc */
+        nc += lnc;
+        lnc = 0;
+        split_points.pop_back();
+
+        return ret_val;
     }
 
     /* ------------------------------ PV SPLIT OVER ----------------------------- */
@@ -332,7 +401,7 @@ ScoreVal_t SearchThread::negamax(Board board, ScoreVal_t alpha, ScoreVal_t beta,
                 killer_moves[latest_km_index][depth_left-1] = move;
             }
 
-            TT::write(board, beta, BETA, move, generation);
+            TT::write(board, beta, false, BETA, move, generation);
             return beta;
         }
         if( alpha < local_score )
@@ -342,13 +411,13 @@ ScoreVal_t SearchThread::negamax(Board board, ScoreVal_t alpha, ScoreVal_t beta,
             alpha = local_score;
         }
     }
-    TT::write(board, alpha, nt, bm, generation);
+    TT::write(board, alpha, false, nt, bm, generation);
     return alpha;
 }
 
 ScoreVal_t SearchThread::quiesce(Board board, ScoreVal_t alpha, ScoreVal_t beta, Depth_t depth_left)
 {
-    nc++; // node count increment
+    lnc++; // node count increment
 
     /* Return if search terminated */
     if(over)
@@ -414,38 +483,14 @@ int movetime_deduction(const SearchArgs args, const Side player)
     return 5000;
 }
 
-void update_engres(SearchThread &rm, EngineResults &engr, std::mutex &engmtx, bool final)
+void update_engres(std::vector<Move_t> &pv, ScoreVal_t score, Depth_t gen, EngineResults &engr, std::mutex &engmtx)
 {
     std::lock_guard<std::mutex> end_guard(engmtx);
 
-    bool new_data_flag = false;
+    engr.pv = pv;
+    engr.pv_score = score;
+    engr.generation = gen;
+    engr.new_pv = true;
 
-    // score update
-    if(final && (((rm.player == WHITE) ? (rm.score > engr.best_score) : (rm.score < engr.best_score)) || engr.best_move == 0) 
-             && rm.eval_depth != 1)
-    {
-        engr.best_move  = rm.root_move;
-        engr.best_score = rm.score;
-        new_data_flag   = true;
-    }
-
-    // depth update
-    if(rm.eval_depth > engr.current_max_depth)
-    {
-        engr.current_max_depth  = rm.eval_depth;
-        new_data_flag           = true;
-    }
-
-    if(rm.nc != 0)
-    {
-        engr.node_count.fetch_add(rm.nc);
-        rm.nc = 0;
-        new_data_flag = true;
-    }
-
-    // wakeup if new data 
-    if(new_data_flag)
-    {
-        engr.new_data.notify_all();
-    }
+    engr.new_data.notify_all();
 }

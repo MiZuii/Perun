@@ -65,13 +65,14 @@ TTItem *TT::raw_probe(Board &board, Depth_t gen)
     return probe;
 }
 
-void TT::write(Board &board, ScoreVal_t score, NodeType nt, Move_t bm, Depth_t gen)
+void TT::write(Board &board, ScoreVal_t score, bool is_pv, NodeType nt, Move_t bm, Depth_t gen)
 {
     TTItem *probe = &TT::_tt[board.getHash() % TT::_size];
 
     probe->key = board.getHash();
     probe->score = score;
     probe->depth = board.getPositionDepth();
+    probe->pv = is_pv;
     probe->type = nt;
     probe->bm = bm;
     probe->gen = gen % 32;
@@ -117,6 +118,19 @@ void TT::pv_probe(Board board, Depth_t gen, std::vector<Move_t> &pv)
         pv.push_back(pv_move);
         b.makeMove(pv_move);
     }
+}
+
+void TT::pv_propagate(Board board, Depth_t gen, std::vector<Move_t> &pv)
+{
+    Board b{board};
+
+    for(auto pv_move : pv)
+    {
+        TT::write(board, -EVAL_INF, true, BETA, pv_move, gen);
+        b.makeMove(pv_move);
+    }
+
+    TT::write(board, -EVAL_INF, true, BETA, 0, gen);
 }
 
 bool TT::is_pv(Board board, Depth_t gen)

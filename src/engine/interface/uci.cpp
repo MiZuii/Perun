@@ -213,10 +213,11 @@ void UciInterface::go(std::vector<std::string> &args)
     {
         _messenger_thread.join();
     }
-    _messenger_thread = std::thread(UciInterface::messenger, std::ref(Engine::getEngineResultsStruct()), std::ref(Engine::getEngineResultsMutex()));
-
+    
     // start search
     Engine::start();
+
+    _messenger_thread = std::thread(UciInterface::messenger, std::ref(Engine::getEngineResultsStruct()), std::ref(Engine::getEngineResultsMutex()));
 }
 
 void UciInterface::stop(std::vector<std::string> &args)
@@ -230,6 +231,7 @@ void UciInterface::ponderhit(std::vector<std::string> &args)
 
 void UciInterface::quit(std::vector<std::string> &args)
 {
+    Engine::stop();
     if(_messenger_thread.joinable())
     {
         _messenger_thread.join();
@@ -280,10 +282,13 @@ void UciInterface::messenger(EngineResults &engr, std::mutex &endmtx)
         std::unique_lock<std::mutex> ul(endmtx);
         std::cv_status cvs = engr.new_data.wait_for(ul, UciInterface::refresh_rate);
 
+        /* Retrive nc from SearchThread */
+        unsigned int nc = SearchThread::probe_nc();
+
         // end thread if engine finished + send bestmove
         if(engr.finished)
         {
-            bestmove(engr.best_move, 0); // no pondering implemented for now
+            bestmove(engr.pv[0], 0); // no pondering implemented for now
             engr.finished = false; // tmp
             break;
         }
@@ -293,15 +298,18 @@ void UciInterface::messenger(EngineResults &engr, std::mutex &endmtx)
             (std::chrono::steady_clock::now() - engr.tstart);
         if(search_dur.count() != 0)
         {
-            message("info nps " + std::to_string(((int64_t)engr.node_count * 1000) / search_dur.count()));
+            message("info nps " + std::to_string(((int64_t)nc * 1000) / search_dur.count()) +
+                    " nodes " + std::to_string(nc));
         }
 
         // send specific data
         if(std::cv_status::no_timeout == cvs)
         {
-            message("info depth " + std::to_string(engr.current_max_depth) + 
+            message("info depth " + std::to_string(engr.generation) + 
                 " time " + std::to_string(search_dur.count()) +
-                " nodes " + std::to_string(engr.node_count));
+                " nodes " + std::to_string(nc) +
+                " score cp " + std::to_string(engr.pv_score) +
+                " pv " + parse_pv(engr.pv));
         }
     }
 }
@@ -348,4 +356,12 @@ std::string UciInterface::unparse_move(Move_t move)
     res += Board::intToField(getTargetSquare(move));
     res += Board::intToRank(getTargetSquare(move));
     return res;
+}
+
+std::string UciInterface::parse_pv(std::vector<Move_t> &pv)
+{
+    return std::accumulate(pv.begin(), pv.end(), std::string(), [](std::string acc, Move_t move) {
+        if(acc.empty()) { return unparse_move(move); }
+        return acc + " " + unparse_move(move);
+    });
 }

@@ -222,7 +222,7 @@ U64 Board::getHash()
 
 int Board::getPositionDepth()
 {
-    return _fullmove_clock + _side_to_move;
+    return _fullmove_clock*2 + _side_to_move - 1;
 }
 
 /* -------------------------------------------------------------------------- */

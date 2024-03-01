@@ -48,14 +48,20 @@ private:
 
 public:
 
-    static void         init();
-    static void         resize(size_t new_size);
-    static void         destroy();
-    static ScoreVal_t   probe(Board &board, ScoreVal_t alpha, ScoreVal_t beta, Depth_t gen);
-    static TTItem*      raw_probe(Board &board, Depth_t gen);
-    static void         write(Board &board, ScoreVal_t score, NodeType nt, Move_t bm, Depth_t gen);
-    static void         pv_probe(Board board, Depth_t gen, std::vector<Move_t> &pvv);
-    static bool         is_pv(Board board, Depth_t gen);
+    /* TT manipulation */
+    static void init();
+    static void resize(size_t new_size);
+    static void destroy();
+
+    /* normal probing and writing */
+    static ScoreVal_t probe(Board &board, ScoreVal_t alpha, ScoreVal_t beta, Depth_t gen);
+    static TTItem*    raw_probe(Board &board, Depth_t gen);
+    static void       write(Board &board, ScoreVal_t score, bool is_pv, NodeType nt, Move_t bm, Depth_t gen);
+
+    /* pv operations */
+    static void pv_probe(Board board, Depth_t gen, std::vector<Move_t> &pv);
+    static void pv_propagate(Board board, Depth_t gen, std::vector<Move_t> &pv);
+    static bool is_pv(Board board, Depth_t gen);
 
 };
 

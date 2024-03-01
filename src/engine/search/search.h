@@ -4,24 +4,57 @@
 #include "ordering.h"
 #include "../tt/tt.h"
 
+#include <type_traits>
+
 /* -------------------------------------------------------------------------- */
 /*                              SEARCH STRUCTURES                             */
 /* -------------------------------------------------------------------------- */
+
+class dthread {
+private:
+    std::thread _thread;
+
+public:
+
+    dthread() noexcept {}
+
+    template<typename Callable, typename... Args>
+    explicit dthread(Callable&& func, Args&&... args) noexcept :
+        _thread(std::forward<Callable>(func), std::forward<Args>(args)...)
+    {}
+
+    dthread(dthread &other) = delete;
+    dthread(dthread &&other) noexcept {
+        _thread.swap(other._thread);
+    }
+
+    dthread& operator=(dthread& other) = delete;
+    dthread& operator=(dthread&& other) noexcept {
+        _thread.swap(other._thread);
+        return *this;
+    }
+
+    ~dthread() noexcept {
+        if (_thread.joinable()) {
+            _thread.join();
+        }
+    }
+};
 
 struct EngineResults
 {
     // calculation state variables
     std::condition_variable new_data;
-    bool                    finished;
+    bool finished, new_pv;
 
-    // conditional variables
-    Move_t      best_move;
-    ScoreVal_t  best_score;
-    Depth_t     current_max_depth;
+    // results
+    std::vector<Move_t> pv;
+    ScoreVal_t          pv_score;
+    Depth_t             generation;
 
     // refreshable variables
-    std::atomic<int>                                    node_count;
     std::chrono::time_point<std::chrono::steady_clock>  tstart;
+    unsigned int nc;
 };
 
 struct SearchArgs
@@ -62,7 +95,7 @@ private:
     SearchThread           &_owner;
     MoveState              _main_move_state;
     std::vector<MoveState> _moves;
-    int                    _last_todo_idx;
+    unsigned int           _last_todo_idx;
 
 public:
 
@@ -84,17 +117,20 @@ public:
 class SearchThread
 {
 private:
+    /* nc */
+    static inline unsigned int nc = 0;
+
     /* Search intel */
-    static std::vector<Move_t> *pv;
-    static Depth_t              pv_init_depth;
-    static Depth_t              generation;
+    static inline std::vector<Move_t> *pv            = nullptr;
+    static inline Depth_t              pv_init_depth = 0;
+    static inline Depth_t              generation    = 0;
 
     /* Search controll */
-    static bool over;
+    static inline bool over = false;
 
-    static std::mutex              mutex;
-    static std::condition_variable idle;
-    static std::vector<SplitPoint> split_points;
+    static inline std::mutex              mutex;
+    static inline std::condition_variable idle;
+    static inline std::vector<SplitPoint> split_points;
 
     /* Search local */
     static constexpr Depth_t    MAX_PLY = 64;
@@ -102,26 +138,30 @@ private:
     int                         latest_km_index;
     using KMT = std::array<Move_t, MAX_PLY>;
     std::array<KMT, KMS_NUM>    killer_moves;
-    int                         nc;
+    unsigned int                lnc;
 
     /* condition variable for thread waiting
     if becomes and owner of splitpoint*/
     std::condition_variable pidle;
 
+    /* Threads creation */
+    void work();
+    void iterate(Board board, SearchArgs args, EngineResults &engr, std::mutex &engmtx);
 
 public:
 
     static void create_worker();
-    static void create_main();
+    static void create_main(Board board, SearchArgs args, EngineResults &engr, std::mutex &engmtx);
+    static void signal_end();
+    static bool finished() {return over;}
+    static unsigned int probe_nc();
+    static void clear_statics();
 
     ScoreVal_t negamax(Board board, ScoreVal_t alpha, ScoreVal_t beta, Depth_t depth_left);
     ScoreVal_t quiesce(Board board, ScoreVal_t alpha, ScoreVal_t beta, Depth_t depth_left);
 
     friend class MoveOrder;
     friend class SplitPoint;
-
-    void work();
-    void iterate();
 };
 
 /* -------------------------------------------------------------------------- */
@@ -134,4 +174,4 @@ void search(std::stop_token stok, Board board, const std::vector<Move_t> move_hi
 /* ----------------------------- HELP FUNCTIONS ----------------------------- */
 
 int movetime_deduction(const SearchArgs args, const Side player);
-void update_engres(SearchThread &rm, EngineResults &engr, std::mutex &engmtx, bool final = false);
+void update_engres(std::vector<Move_t> &pv, ScoreVal_t score, Depth_t gen, EngineResults &engr, std::mutex &engmtx);

@@ -45,10 +45,10 @@ class UciInterface : public Interface
 {
 private:
 
-    static std::thread _messenger_thread;
-    static void messenger(EngineResults &engr, std::mutex &endmtx);
+    static std::thread              _messenger_thread;
     static std::vector<std::string> no_args;
-    static std::set<std::string> go_subcommands_set;
+    static std::set<std::string>    go_subcommands_set;
+    static void messenger(EngineResults &engr, std::mutex &endmtx);
 
     // gui to engine
     static void uci(std::vector<std::string> &args);
@@ -74,8 +74,9 @@ private:
 
 
     // misc
-    static Move_t parse_move(std::string raw_move);
+    static Move_t      parse_move(std::string raw_move);
     static std::string unparse_move(Move_t move);
+    static std::string parse_pv(std::vector<Move_t> &pv);
     // static std::string unparse_move(Move_t move); // move this back here
 
 public:

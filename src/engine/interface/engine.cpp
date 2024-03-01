@@ -127,11 +127,11 @@ std::mutex &Engine::getEngineResultsMutex()
 
 void Engine::cleanEngineResults()
 {
-    _engine_results.finished = false;
-
-    _engine_results.best_move = 0;
-    _engine_results.best_score = 0;
-    _engine_results.current_max_depth = 0;
+    _engine_results.finished   = false;
+    _engine_results.new_pv     = false;
+    _engine_results.pv_score   = 0;
+    _engine_results.generation = 0;
+    _engine_results.nc         = 0;
     
-    _engine_results.node_count.store(0);
+    _engine_results.pv.clear();
 }
